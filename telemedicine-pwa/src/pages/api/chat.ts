@@ -1,66 +1,57 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { parseAIResponse } from '../../utils/medicalAssessment';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const SYSTEM_PROMPT = `
-You are a medical pre-screening assistant. Analyze patient symptoms and provide responses in this JSON format:
-{
-  "response": "Your natural response to the patient",
-  "assessment": {
-    "specialty": "required medical specialty",
-    "urgency": "low|medium|high",
-    "symptoms": ["list", "of", "symptoms"],
-    "recommendConsultation": true|false
-  }
-}
-Only include assessment when you have gathered enough information.
-`;
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
   try {
-    const { message, history } = req.body;
-
+    const { message } = req.body;
+    
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history,
-        { role: "user", content: message }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-      response_format: { type: "json_object" }
+        {
+          role: "system",
+          content: `You are a medical assistant. For any symptoms that:
+          1. Persist for more than a few days
+          2. Cause significant pain or discomfort
+          3. Affect daily activities or sleep
+          4. Could indicate a serious condition
+          
+          Respond with: ###requiresDoctor=true### followed by your message explaining why 
+          a doctor consultation is recommended.
+          
+          For minor issues, provide self-care advice first, but escalate if symptoms persist.`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ]
     });
 
-    const content = completion.choices[0].message.content || '{}';
-    const aiResponse = JSON.parse(content);
-    
-    if (aiResponse.assessment) {
-      // If assessment is complete, trigger payment flow
-      res.status(200).json({ 
-        message: aiResponse.response,
-        assessment: aiResponse.assessment,
-        shouldPromptPayment: aiResponse.assessment.recommendConsultation
-      });
-    } else {
-      // Continue gathering information
-      res.status(200).json({ 
-        message: aiResponse.response
-      });
-    }
+    const aiResponse = completion.choices[0].message.content || '';
+    const requiresDoctor = aiResponse.includes('###requiresDoctor=true###');
+    const cleanResponse = aiResponse.replace('###requiresDoctor=true###', '').trim();
+    const assessment = parseAIResponse(cleanResponse);
+
+    res.status(200).json({ 
+      message: cleanResponse,
+      assessment,
+      requiresDoctor
+    });
   } catch (error) {
-    console.error('OpenAI error:', error);
-    res.status(500).json({ error: 'Failed to process chat' });
+    console.error('OpenAI API error:', error);
+    res.status(500).json({ message: 'Error processing your request' });
   }
 } 

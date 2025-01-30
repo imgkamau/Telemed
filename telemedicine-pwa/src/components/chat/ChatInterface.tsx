@@ -1,17 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  TextField,
-  IconButton,
-  Paper,
-  Typography,
+import { useState } from 'react';
+import { 
+  Box, 
+  TextField, 
+  Button, 
+  Paper, 
+  Typography, 
   CircularProgress,
-  Button,
-  Alert
+  Container,
+  Avatar
 } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
+import { Send as SendIcon } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { CONSULTATION_FEE } from '../../config/constants';
+import { useRouter } from 'next/router';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,25 +27,21 @@ interface Assessment {
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([{
-    role: 'assistant',
-    content: "Hello! I'm here to help understand your medical concern. Could you describe what's bothering you?"}]);
   const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content: 'Hello! I\'m your medical assistant. Please describe your symptoms or health concerns.'
+    }
+  ]);
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
   const { user } = useAuth();
+  const router = useRouter();
+  const [showPayment, setShowPayment] = useState(false);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSend = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!input.trim()) return;
 
     const userMessage: Message = { role: 'user' as const, content: input };
@@ -56,147 +53,210 @@ export default function ChatInterface() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, history: messages })
+        body: JSON.stringify({ message: input })
       });
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
       
-      if (data.assessment) {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.message 
+      }]);
+
+      if (data.requiresDoctor) {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Based on your symptoms, I recommend consulting with a doctor. The consultation fee is KES 50. Would you like to proceed?' 
+        }]);
+        
         setAssessment(data.assessment);
-        if (data.shouldPromptPayment) {
-          setShowPayment(true);
-        }
+        setShowPayment(true);
       }
     } catch (error) {
       console.error('Chat error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error. Please try again.' 
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
   const handlePayment = async () => {
-    if (!user?.phoneNumber) return;
-
     try {
       setLoading(true);
-      const response = await fetch('/api/mock-payment', {
+
+      // PRODUCTION CODE (Commented for testing)
+      /*
+      const response = await fetch('/api/payment/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: user.phoneNumber,
-          amount: CONSULTATION_FEE,
+          amount: 50,
+          phoneNumber: user?.phoneNumber,
           assessment
         })
       });
 
       const data = await response.json();
-      if (data.success && assessment) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: 'Payment received! We are now matching you with a suitable doctor...'
-        }]);
-        // Trigger doctor matching only if assessment exists
-        await matchDoctor(assessment);
+      if (data.success) {
+        // Wait for payment confirmation
+        const confirmationResponse = await fetch('/api/payment/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkoutRequestId: data.checkoutRequestId })
+        });
+
+        const confirmationData = await confirmationResponse.json();
+        if (confirmationData.success) {
+          // Match with doctor based on assessment
+          const matchResponse = await fetch('/api/match-doctor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assessment })
+          });
+
+          const { doctorId } = await matchResponse.json();
+          if (doctorId) {
+            router.push(`/consultation/${doctorId}`);
+          }
+        }
       }
+      */
+
+      // MOCK PAYMENT FOR TESTING
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock successful payment
+      const mockPaymentSuccess = true;
+      
+      if (mockPaymentSuccess) {
+        // Match with doctor based on assessment
+        const matchResponse = await fetch('/api/match-doctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assessment })
+        });
+
+        const { doctorId } = await matchResponse.json();
+        if (doctorId) {
+          router.push(`/consultation/${doctorId}`);
+        }
+      }
+
     } catch (error) {
       console.error('Payment error:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, there was an error processing your payment. Please try again.'
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const matchDoctor = async (assessment: Assessment) => {
-    try {
-      const response = await fetch('/api/match-doctor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assessment })
-      });
-
-      const data = await response.json();
-      if (data.doctorId) {
-        // Redirect to consultation room or show doctor details
-      }
-    } catch (error) {
-      console.error('Matching error:', error);
-    }
-  };
-
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Paper 
-        elevation={3} 
-        sx={{ 
+    <Container maxWidth="md">
+      <Paper elevation={3} sx={{ height: '80vh', display: 'flex', flexDirection: 'column', mt: 2 }}>
+        {/* Chat Header */}
+        <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+          <Typography variant="h6">Medical Assistant</Typography>
+        </Box>
+
+        {/* Messages Area */}
+        <Box sx={{ 
           flex: 1, 
           overflow: 'auto', 
           p: 2,
           display: 'flex',
           flexDirection: 'column',
           gap: 2
-        }}
-      >
-        {messages.map((msg, index) => (
-          <Box
-            key={index}
-            sx={{
-              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '70%'
-            }}
-          >
-            <Paper
-              elevation={1}
+        }}>
+          {messages.map((msg, index) => (
+            <Box
+              key={index}
               sx={{
-                p: 2,
-                bgcolor: msg.role === 'user' ? 'primary.main' : 'grey.100',
-                color: msg.role === 'user' ? 'white' : 'text.primary'
+                display: 'flex',
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                gap: 1
               }}
             >
-              <Typography>{msg.content}</Typography>
-            </Paper>
-          </Box>
-        ))}
-        <div ref={messagesEndRef} />
+              {msg.role === 'assistant' && (
+                <Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>
+              )}
+              <Paper
+                elevation={1}
+                sx={{
+                  p: 2,
+                  maxWidth: '70%',
+                  bgcolor: msg.role === 'user' ? 'primary.light' : 'grey.100',
+                  color: msg.role === 'user' ? 'white' : 'text.primary'
+                }}
+              >
+                <Typography>{msg.content}</Typography>
+              </Paper>
+              {msg.role === 'user' && (
+                <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                  {user?.phoneNumber?.[0] || 'U'}
+                </Avatar>
+              )}
+            </Box>
+          ))}
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress />
+            </Box>
+          )}
+        </Box>
+
+        {/* Input Area */}
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            p: 2,
+            bgcolor: 'grey.100',
+            display: 'flex',
+            gap: 1
+          }}
+        >
+          <TextField
+            fullWidth
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Describe your symptoms..."
+            variant="outlined"
+            size="small"
+            disabled={loading}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !input.trim()}
+            endIcon={<SendIcon />}
+          >
+            Send
+          </Button>
+        </Box>
       </Paper>
 
+      {/* Payment Dialog */}
       {showPayment && (
         <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Based on your symptoms, we recommend consulting with a doctor. 
-            The consultation fee is KES {CONSULTATION_FEE}.
-          </Alert>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Consultation fee: KES 50
+          </Typography>
           <Button
             fullWidth
             variant="contained"
             onClick={handlePayment}
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} /> : 'Proceed to Payment'}
+            {loading ? <CircularProgress size={24} /> : 'Pay Now'}
           </Button>
         </Box>
       )}
-
-      <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Type your message..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-          disabled={loading}
-          InputProps={{
-            endAdornment: (
-              <IconButton 
-                onClick={handleSend} 
-                disabled={loading || !input.trim()}
-              >
-                {loading ? <CircularProgress size={24} /> : <SendIcon />}
-              </IconButton>
-            )
-          }}
-        />
-      </Box>
-    </Box>
+    </Container>
   );
 } 
