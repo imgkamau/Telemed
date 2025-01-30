@@ -1,0 +1,1 @@
+export const CONSULTATION_FEE = 50; // KES 50 fixed fee for all consultations 
