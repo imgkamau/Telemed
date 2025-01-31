@@ -13,11 +13,14 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
+// Prevent multiple Firebase initializations
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 let analytics;
+
+// Disable reCAPTCHA
+auth.settings.appVerificationDisabledForTesting = true;
 
 // Only initialize analytics on client side
 if (typeof window !== 'undefined') {

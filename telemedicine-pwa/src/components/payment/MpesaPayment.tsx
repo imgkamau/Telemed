@@ -23,10 +23,24 @@ export default function MPesaPayment({
 }: MPesaPaymentProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const validatePhoneNumber = (number: string) => {
+    const regex = /^(?:254|\+254|0)?([17]\d{8})$/;
+    return regex.test(number);
+  };
 
   const handlePayment = async () => {
+    setError('');
+    
+    if (!validatePhoneNumber(phoneNumber)) {
+      setError('Please enter a valid Kenyan phone number');
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log('Initiating payment...', { phoneNumber, amount, consultationId });
       const response = await fetch('/api/payments/mpesa', {
         method: 'POST',
         headers: {
@@ -40,6 +54,7 @@ export default function MPesaPayment({
       });
 
       const data = await response.json();
+      console.log('Payment response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Payment failed');
@@ -47,6 +62,7 @@ export default function MPesaPayment({
 
       onSuccess(data.payment);
     } catch (error) {
+      console.error('Payment error:', error);
       onError(error instanceof Error ? error.message : 'Payment failed');
     } finally {
       setLoading(false);
@@ -67,13 +83,15 @@ export default function MPesaPayment({
         onChange={(e) => setPhoneNumber(e.target.value)}
         placeholder="254700000000"
         label="M-Pesa Phone Number"
+        error={!!error}
+        helperText={error}
         sx={{ mb: 2 }}
       />
       <Button
         fullWidth
         variant="contained"
         onClick={handlePayment}
-        disabled={loading}
+        disabled={loading || !phoneNumber}
       >
         {loading ? <CircularProgress size={24} /> : 'Pay with M-Pesa'}
       </Button>

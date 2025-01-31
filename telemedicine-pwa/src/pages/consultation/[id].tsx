@@ -4,6 +4,12 @@ import { Box, Typography, Paper, CircularProgress, Container } from '@mui/materi
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import dynamic from 'next/dynamic';
+
+const ZegoRoom = dynamic(
+  () => import('../../components/video/ZegoRoom'),
+  { ssr: false }
+);
 
 export default function ConsultationRoom() {
   const router = useRouter();
@@ -19,7 +25,7 @@ export default function ConsultationRoom() {
     // Show loading messages sequence
     const messages = [
       { text: 'Connecting to consultation room...', delay: 1000 },
-      { text: 'Setting up secure connection...', delay: 2000 },
+      { text: 'Setting up secure video connection...', delay: 2000 },
       { text: 'Almost ready...', delay: 3000 }
     ];
 
@@ -90,11 +96,15 @@ export default function ConsultationRoom() {
           </Typography>
         </Paper>
 
-        {/* Mock consultation interface for testing */}
-        <Paper elevation={3} sx={{ p: 3, minHeight: '60vh' }}>
-          <Typography variant="body1" align="center">
-            Consultation interface will be implemented here
-          </Typography>
+        {/* Video consultation interface */}
+        <Paper elevation={3} sx={{ p: 3, minHeight: '70vh' }}>
+          {user && id && (
+            <ZegoRoom
+              roomId={id as string}
+              userId={user.uid}
+              userName={user.displayName || 'Patient'}
+            />
+          )}
         </Paper>
       </Box>
     </Container>
