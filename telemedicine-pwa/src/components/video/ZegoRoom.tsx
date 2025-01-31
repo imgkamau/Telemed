@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 
 interface ZegoRoomProps {
   roomId: string;
@@ -18,7 +19,6 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
       try {
         if (!containerRef.current) return;
 
-        const { ZegoUIKitPrebuilt } = await import('@zegocloud/zego-uikit-prebuilt');
         const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID!);
         const serverSecret = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET!;
         
@@ -30,11 +30,15 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
           userName
         );
 
-        const zp = ZegoUIKitPrebuilt.create(kitToken);
-        zegoRef.current = zp;
+        const zc = ZegoUIKitPrebuilt.create(kitToken);
+        zegoRef.current = zc;
 
-        zp.joinRoom({
+        zc.joinRoom({
           container: containerRef.current,
+          sharedLinks: [{
+            name: 'Copy Link',
+            url: window.location.href
+          }],
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
             config: {
@@ -55,7 +59,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
           showTextChat: true,
           maxUsers: 2,
           layout: "Auto",
-          showScreenSharingButton: false,
+          showScreenSharingButton: true,
           showUserList: false,
           onJoinRoom: () => {
             console.log('Joined room successfully');
@@ -97,7 +101,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
     );
   }
 
-  return <div ref={containerRef} style={{ width: '100%', height: '600px' }} />;
+  return <div ref={containerRef} style={{ width: '100vw', height: '100vh' }} />;
 }
 
 export default ZegoRoom; 

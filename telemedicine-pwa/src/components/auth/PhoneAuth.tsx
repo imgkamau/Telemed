@@ -61,8 +61,6 @@ export default function PhoneAuth() {
 
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', p: 3 }}>
-      <div id="recaptcha-container" />
-      
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       
       {!confirmationResult ? (
@@ -78,6 +76,7 @@ export default function PhoneAuth() {
             disabled={loading}
             sx={{ mb: 2 }}
           />
+          <div id="recaptcha-container" style={{ marginBottom: '1rem' }} />
           <Button 
             fullWidth 
             variant="contained"
