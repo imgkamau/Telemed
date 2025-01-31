@@ -27,20 +27,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithPhone = async (phoneNumber: string) => {
     try {
-      // Setup visible reCAPTCHA
+      // Format phone number if needed
+      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      
+      // Setup reCAPTCHA
       if (!(window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'normal',
           callback: () => {
-            // reCAPTCHA solved, allow signInWithPhoneNumber.
+            console.log('reCAPTCHA resolved');
+          },
+          'expired-callback': () => {
+            console.log('reCAPTCHA expired');
+            (window as any).recaptchaVerifier = null;
           }
         });
-        
-        // Render the reCAPTCHA widget
-        (window as any).recaptchaVerifier.render();
       }
 
-      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      // Log the attempt
+      console.log('Attempting to send code to:', formattedNumber);
       
       const confirmationResult = await signInWithPhoneNumber(
         auth,
@@ -49,11 +54,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       return confirmationResult;
-    } catch (error) {
-      console.error('Error in signInWithPhone:', error);
-      // Clear the reCAPTCHA if there's an error
-      (window as any).recaptchaVerifier = null;
-      setError('Error sending verification code');
+    } catch (error: any) {
+      console.error('Firebase error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       throw error;
     }
   };

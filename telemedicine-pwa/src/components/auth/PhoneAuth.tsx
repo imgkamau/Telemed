@@ -35,9 +35,9 @@ export default function PhoneAuth() {
       setError('');
       const result = await signInWithPhone(phoneNumber);
       setConfirmationResult(result);
-    } catch (err) {
-      setError('Failed to send verification code');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Detailed error:', err);
+      setError(`Failed to send verification code: ${err.message}`);
     } finally {
       setLoading(false);
     }
