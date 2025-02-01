@@ -72,8 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('No confirmation result found');
       }
       const result = await window.confirmationResult.confirm(code);
-      setUser(result.user);
-      router.push('/chat'); // Redirect to chat after successful verification
+      setUser({
+        id: result.user.uid,
+        phoneNumber: result.user.phoneNumber || '',
+        email: result.user.email || '',
+        //displayName: result.user.displayName || ''
+      });
+      router.push('/chat');
     } catch (error) {
       console.error('Error confirming OTP:', error);
       setError('Invalid verification code');
@@ -98,7 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         id: result.user.uid,
         phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || ''
+        email: result.user.email || '',
+       // displayName: result.user.displayName || ''
       });
     } catch (error: any) {
       console.error('Email sign in error:', error);
@@ -112,7 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         id: result.user.uid,
         phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || ''
+        email: result.user.email || '',
+        //displayName: result.user.displayName || ''
       });
     } catch (error: any) {
       console.error('Email sign up error:', error);
@@ -127,7 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         id: result.user.uid,
         phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || ''
+        email: result.user.email || '',
+        //displayName: result.user.displayName || ''
       });
     } catch (error: any) {
       console.error('Google sign in error:', error);
@@ -139,7 +147,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser ? {
         id: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber || '',  // Add phoneNumber with fallback
+        phoneNumber: firebaseUser.phoneNumber || '',
+        email: firebaseUser.email || '',
+        //displayName: firebaseUser.displayName || ''
       } : null);
       setLoading(false);
     });

@@ -37,7 +37,7 @@ export default function ConsultationRoom() {
     const mockConsultation = {
       doctorId: 'doctor123',
       doctorName: 'Dr. John Doe',
-      patientId: user?.uid,
+      patientId: user?.id,
       status: 'active',
       startTime: new Date().toISOString()
     };
@@ -101,8 +101,8 @@ export default function ConsultationRoom() {
           {user && id && (
             <ZegoRoom
               roomId={id as string}
-              userId={user.uid}
-              userName={user.displayName || 'Patient'}
+              userId={user.id}
+              userName={user.email || user.phoneNumber || 'Patient'}
             />
           )}
         </Paper>

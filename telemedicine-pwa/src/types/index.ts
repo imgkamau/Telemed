@@ -44,7 +44,7 @@ export interface Message {
 }
 
 export interface User {
-  uid: string;
-  phoneNumber: string | null;
-  // ... other user properties
+  id: string;
+  phoneNumber: string;
+  email: string;
 } 
