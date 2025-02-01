@@ -21,13 +21,16 @@ interface Message {
   timestamp?: Date;
 }
 
+interface PatientInfo {
+  type: 'self' | 'child' | 'other';
+  age?: number;
+  specialty: string;
+  primarySymptom: string;
+}
+
 interface ChatContext {
-  patientInfo: {
-    type: 'self' | 'child' | 'other';
-    age?: number;
-    specialty: string;
-    primarySymptom: string;
-  };
+  patientInfo: PatientInfo | null;
+  setPatientInfo: React.Dispatch<React.SetStateAction<PatientInfo | null>>;
   messages: Message[];
   availableDoctors: Doctor[];
   findMatchingDoctor: (specialty: string) => Doctor[];
@@ -38,11 +41,7 @@ const ChatContext = createContext<ChatContext | null>(null);
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [availableDoctors, setAvailableDoctors] = useState<Doctor[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [patientInfo, setPatientInfo] = useState({
-    type: 'self' as const,
-    specialty: '',
-    primarySymptom: ''
-  });
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
 
   const findMatchingDoctor = (specialty: string) => {
     return availableDoctors.filter(doctor => 
@@ -67,6 +66,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       availableDoctors, 
       findMatchingDoctor,
       patientInfo,
+      setPatientInfo,
       messages 
     }}>
       {children}

@@ -28,8 +28,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useRouter } from 'next/router';
 import { specialties } from '../../components/chat/InitialAssessment';
-
-
+import { useChat } from '../../contexts/ChatContext';
 
 export default function PreChatAssessment() {
   const theme = useTheme();
@@ -39,6 +38,7 @@ export default function PreChatAssessment() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [primarySymptom, setPrimarySymptom] = useState('');
   const router = useRouter();
+  const { setPatientInfo } = useChat();
 
   const steps = ['Patient Type', 'Medical Specialty', 'Symptoms'];
 
@@ -183,15 +183,15 @@ export default function PreChatAssessment() {
 
   const handleStartChat = async () => {
     try {
-      const chatSessionRef = await addDoc(collection(db, 'chatSessions'), {
-        patientType,
-        patientAge: patientAge || null,
+      const assessmentData = {
+        type: patientType as 'self' | 'child' | 'other',
+        age: patientAge ? parseInt(patientAge) : undefined,
         specialty: selectedSpecialty,
         primarySymptom,
-        createdAt: new Date(),
-        status: 'active'
-      });
-      router.push(`/chat/${chatSessionRef.id}`);
+      };
+
+      setPatientInfo(assessmentData);
+      router.push('/chat');
     } catch (error) {
       console.error('Error starting chat:', error);
     }
