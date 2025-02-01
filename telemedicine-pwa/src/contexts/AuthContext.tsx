@@ -27,31 +27,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const signInWithPhone = async (phoneNumber: string) => {
+  const signInWithPhone = async (phoneNumber: string, retryCount = 0) => {
     try {
       const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
       
-      // Clear any existing reCAPTCHA
+      if (retryCount > 0) {
+        // Wait 5 seconds between retries
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      
+      // Clear existing reCAPTCHA
       if ((window as any).recaptchaVerifier) {
         await (window as any).recaptchaVerifier.clear();
         (window as any).recaptchaVerifier = null;
       }
       
-      // Create new reCAPTCHA instance
       const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',  // Changed to invisible
-        callback: (response: any) => {
-          console.log('reCAPTCHA response:', response);
-        }
+        size: 'invisible',
+        callback: (response: any) => console.log('reCAPTCHA response:', response)
       });
       
-      // Render before using
       await verifier.render();
       (window as any).recaptchaVerifier = verifier;
       
       return await signInWithPhoneNumber(auth, formattedNumber, verifier);
     } catch (error: any) {
-      console.error('Firebase error:', error);
+      if (error.code === 'auth/too-many-requests' && retryCount < 2) {
+        return signInWithPhone(phoneNumber, retryCount + 1);
+      }
       throw error;
     }
   };
