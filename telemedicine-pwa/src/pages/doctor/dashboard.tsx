@@ -80,20 +80,39 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.uid) return;
+      if (!user?.id) {
+        console.log('No user ID found');
+        return;
+      }
 
       try {
+        console.log('Fetching doctor data for:', user.id);
+        
         // Fetch doctor data
-        const doctorRef = doc(db, 'doctors', user.uid);
+        const doctorRef = doc(db, 'doctors', user.id);
         const doctorSnap = await getDoc(doctorRef);
         
         if (doctorSnap.exists()) {
+          console.log('Doctor data found:', doctorSnap.data());
           setDoctorData(doctorSnap.data() as DoctorData);
+        } else {
+          console.log('No doctor document found');
+          // Add default data for new doctors
+          const defaultDoctorData: DoctorData = {
+            name: '',
+            specialization: '',
+            availability: true,
+            rating: 0,
+            totalRatings: 0,
+            consultationFee: '0'
+          };
+          setDoctorData(defaultDoctorData);
         }
 
         // Fetch appointments
+        console.log('Fetching appointments...');
         const appointmentsRef = collection(db, 'appointments');
-        const q = query(appointmentsRef, where('doctorId', '==', user.uid));
+        const q = query(appointmentsRef, where('doctorId', '==', user.id));
         const querySnapshot = await getDocs(q);
         
         const appointmentsList: Appointment[] = [];
@@ -101,13 +120,15 @@ export default function DoctorDashboard() {
           appointmentsList.push({ id: doc.id, ...doc.data() } as Appointment);
         });
         
+        console.log('Appointments found:', appointmentsList.length);
         setAppointments(appointmentsList);
 
         // Fetch consultations
+        console.log('Fetching consultations...');
         const consultationsRef = collection(db, 'consultations');
         const consultationsQ = query(
           consultationsRef,
-          where('doctorId', '==', user.uid)
+          where('doctorId', '==', user.id)
         );
         const consultationsQuerySnapshot = await getDocs(consultationsQ);
         
@@ -119,6 +140,7 @@ export default function DoctorDashboard() {
           } as Consultation);
         });
         
+        console.log('Consultations found:', consultationData.length);
         setConsultations(consultationData);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -131,10 +153,10 @@ export default function DoctorDashboard() {
   }, [user]);
 
   const handleAvailabilityToggle = async () => {
-    if (!user?.uid || !doctorData) return;
+    if (!user?.id || !doctorData) return;
 
     try {
-      const doctorRef = doc(db, 'doctors', user.uid);
+      const doctorRef = doc(db, 'doctors', user.id);
       await updateDoc(doctorRef, {
         availability: !doctorData.availability
       });
@@ -145,10 +167,10 @@ export default function DoctorDashboard() {
   };
 
   const handleWorkingHoursUpdate = async () => {
-    if (!user?.uid) return;
+    if (!user?.id) return;
 
     try {
-      const doctorRef = doc(db, 'doctors', user.uid);
+      const doctorRef = doc(db, 'doctors', user.id);
       await updateDoc(doctorRef, {
         workingHours
       });
@@ -168,6 +190,16 @@ export default function DoctorDashboard() {
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
+    );
+  }
+
+  if (!doctorData) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h6" color="error">
+          No doctor profile found. Please contact support.
+        </Typography>
+      </Container>
     );
   }
 
@@ -357,6 +389,7 @@ export default function DoctorDashboard() {
                     setWorkingHours(prev => ({ ...prev, start: newValue }));
                   }
                 }}
+                renderInput={(params) => <TextField {...params} />}
               />
               <TimePicker
                 label="End Time"
@@ -366,6 +399,7 @@ export default function DoctorDashboard() {
                     setWorkingHours(prev => ({ ...prev, end: newValue }));
                   }
                 }}
+                renderInput={(params) => <TextField {...params} />}
               />
             </Box>
           </LocalizationProvider>
