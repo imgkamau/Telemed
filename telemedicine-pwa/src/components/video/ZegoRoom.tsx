@@ -19,6 +19,14 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
       try {
         if (!containerRef.current) return;
 
+        // Add mobile-specific styles
+        containerRef.current.style.width = '100%';
+        containerRef.current.style.height = '100vh';
+        containerRef.current.style.position = 'fixed';
+        containerRef.current.style.top = '0';
+        containerRef.current.style.left = '0';
+        containerRef.current.style.zIndex = '1000';
+
         // Debug logs
         console.log('Zego Init:', {
           appID: process.env.NEXT_PUBLIC_ZEGO_APP_ID,
@@ -59,19 +67,10 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
           showAudioVideoSettingsButton: true,
           showTextChat: true,
           maxUsers: 2,
-          layout: "Auto",
-          onJoinRoom: () => {
-            console.log('Joined room successfully');
-          },
-          onLeaveRoom: () => {
-            console.log('Left room');
-            if (zegoRef.current) {
-              zegoRef.current.destroy();
-            }
-          }
+          layout: "Auto"
         });
       } catch (error) {
-        console.error('Zego initialization error:', error);
+        console.error('Error initializing Zego:', error);
         if (mounted) {
           setError(error instanceof Error ? error.message : 'Failed to initialize video call');
         }
@@ -100,7 +99,20 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
     );
   }
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div 
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 1000,
+        backgroundColor: '#f0f0f0'
+      }}
+    />
+  );
 }
 
 export default ZegoRoom; 
