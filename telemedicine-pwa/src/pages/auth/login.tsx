@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Google as GoogleIcon, Phone as PhoneIcon, Email as EmailIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/router';
 
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -22,6 +23,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const { signInWithPhone, verifyCode, error, signInWithEmail, signInWithGoogle } = useAuth();
+  const router = useRouter();
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +40,7 @@ export default function Login() {
     e.preventDefault();
     try {
       await verifyCode(confirmationResult, verificationCode);
+      router.push('/chat');
     } catch (err) {
       console.error('Error confirming OTP:', err);
     }
@@ -47,8 +50,18 @@ export default function Login() {
     e.preventDefault();
     try {
       await signInWithEmail(email, password);
+      router.push('/chat');
     } catch (err) {
       console.error('Error signing in with email:', err);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+      router.push('/chat');
+    } catch (error: any) {
+      console.error('Google sign in error:', error);
     }
   };
 
@@ -71,7 +84,7 @@ export default function Login() {
               color: 'primary.main'
             }}
           >
-            Welcome Back
+            Welcome - Pata Nafuu
           </Typography>
           
           <div id="recaptcha-container"></div>
@@ -181,7 +194,7 @@ export default function Login() {
                 fullWidth
                 variant="outlined"
                 size="large"
-                onClick={() => signInWithGoogle()}
+                onClick={handleGoogleSignIn}
                 startIcon={<GoogleIcon />}
                 sx={{ 
                   mt: 1,
