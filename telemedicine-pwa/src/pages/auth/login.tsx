@@ -40,7 +40,7 @@ export default function Login() {
     e.preventDefault();
     try {
       await verifyCode(confirmationResult, verificationCode);
-      router.push('/chat');
+      router.push('/pre-assessment');
     } catch (err) {
       console.error('Error confirming OTP:', err);
     }
@@ -50,7 +50,7 @@ export default function Login() {
     e.preventDefault();
     try {
       await signInWithEmail(email, password);
-      router.push('/chat');
+      router.push('/pre-assessment');
     } catch (err) {
       console.error('Error signing in with email:', err);
     }
@@ -59,7 +59,7 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle();
-      router.push('/chat');
+      router.push('/pre-assessment');
     } catch (error: any) {
       console.error('Google sign in error:', error);
     }

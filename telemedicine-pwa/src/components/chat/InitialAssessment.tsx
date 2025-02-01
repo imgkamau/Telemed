@@ -5,7 +5,7 @@ interface Specialty {
   commonIssues: string[];
 }
 
-const specialties: Specialty[] = [
+export const specialties: Specialty[] = [
   {
     id: 'pediatrics',
     name: 'Pediatrics (Children)',
