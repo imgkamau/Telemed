@@ -35,32 +35,21 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
 
         zc.joinRoom({
           container: containerRef.current,
-          sharedLinks: [{
-            name: 'Copy Link',
-            url: window.location.href
-          }],
           scenario: {
             mode: ZegoUIKitPrebuilt.OneONoneCall,
             config: {
-              role: ZegoUIKitPrebuilt.Host
+              role: ZegoUIKitPrebuilt.Host,
             },
           },
-          preJoinViewConfig: {
-            title: 'Telemedicine Consultation'
-          },
-          showPreJoinView: false,
-          showRoomTimer: true,
-          showLeavingView: true,
-          turnOnMicrophoneWhenJoining: true,
-          turnOnCameraWhenJoining: true,
+          showPreJoinView: true,
+          turnOnMicrophoneWhenJoining: false,
+          turnOnCameraWhenJoining: false,
           showMyMicrophoneToggleButton: true,
           showMyCameraToggleButton: true,
           showAudioVideoSettingsButton: true,
           showTextChat: true,
           maxUsers: 2,
           layout: "Auto",
-          showScreenSharingButton: true,
-          showUserList: false,
           onJoinRoom: () => {
             console.log('Joined room successfully');
           },
@@ -101,7 +90,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
     );
   }
 
-  return <div ref={containerRef} style={{ width: '100vw', height: '100vh' }} />;
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
 export default ZegoRoom; 
