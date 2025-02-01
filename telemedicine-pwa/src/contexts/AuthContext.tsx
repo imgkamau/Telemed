@@ -5,12 +5,14 @@ import {
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
   ConfirmationResult,
-  User as FirebaseUser
+  User as FirebaseUser,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { useRouter } from 'next/router';
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
+  loading: boolean;
   signInWithPhone: (phoneNumber: string) => Promise<ConfirmationResult>;
   verifyCode: (confirmationResult: ConfirmationResult, code: string) => Promise<any>;
   signOut: () => Promise<void>;
@@ -19,8 +21,8 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -89,8 +91,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser ? {
+        id: firebaseUser.uid,
+        phoneNumber: firebaseUser.phoneNumber || '',  // Add phoneNumber with fallback
+      } : null);
       setLoading(false);
     });
 
@@ -99,6 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value: AuthContextType = {
     user,
+    loading,
     signInWithPhone,
     verifyCode,
     signOut,
@@ -110,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
