@@ -19,6 +19,14 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
       try {
         if (!containerRef.current) return;
 
+        // Debug logs
+        console.log('Zego Init:', {
+          appID: process.env.NEXT_PUBLIC_ZEGO_APP_ID,
+          roomId,
+          userId,
+          userName
+        });
+
         const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID!);
         const serverSecret = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET!;
         
@@ -29,6 +37,8 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
           userId,
           userName
         );
+
+        console.log('Generated Token:', kitToken);
 
         const zc = ZegoUIKitPrebuilt.create(kitToken);
         zegoRef.current = zc;
