@@ -6,7 +6,11 @@ import {
   signInWithPhoneNumber, 
   ConfirmationResult,
   User as FirebaseUser,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { useRouter } from 'next/router';
 
@@ -17,6 +21,9 @@ interface AuthContextType {
   verifyCode: (confirmationResult: ConfirmationResult, code: string) => Promise<any>;
   signOut: () => Promise<void>;
   error: string | null;
+  signInWithEmail: (email: string, password: string) => Promise<any>;
+  signUpWithEmail: (email: string, password: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -85,6 +92,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      setUser({
+        id: result.user.uid,
+        phoneNumber: result.user.phoneNumber || '',
+        email: result.user.email || ''
+      });
+    } catch (error: any) {
+      console.error('Email sign in error:', error);
+      throw error;
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      setUser({
+        id: result.user.uid,
+        phoneNumber: result.user.phoneNumber || '',
+        email: result.user.email || ''
+      });
+    } catch (error: any) {
+      console.error('Email sign up error:', error);
+      throw error;
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      setUser({
+        id: result.user.uid,
+        phoneNumber: result.user.phoneNumber || '',
+        email: result.user.email || ''
+      });
+    } catch (error: any) {
+      console.error('Google sign in error:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser ? {
@@ -103,7 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithPhone,
     verifyCode,
     signOut,
-    error
+    error,
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithGoogle
   };
 
   return (
