@@ -4,6 +4,7 @@ import type { AppProps } from 'next/app';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from '../styles/theme';
 import { useEffect } from 'react';
+import { ChatProvider } from '../contexts/ChatContext';
 
 function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
@@ -31,12 +32,14 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <AuthProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
-      </ThemeProvider>
+      <ChatProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </ThemeProvider>
+      </ChatProvider>
     </AuthProvider>
   );
 }
