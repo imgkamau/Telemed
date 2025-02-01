@@ -59,12 +59,12 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
               role: ZegoUIKitPrebuilt.Host,
             },
           },
-          showPreJoinView: true,
-          turnOnMicrophoneWhenJoining: false,
-          turnOnCameraWhenJoining: false,
-          showMyMicrophoneToggleButton: true,
+          turnOnMicrophoneWhenJoining: true,
+          turnOnCameraWhenJoining: true,
           showMyCameraToggleButton: true,
+          showMyMicrophoneToggleButton: true,
           showAudioVideoSettingsButton: true,
+          showPreJoinView: true,
           showTextChat: true,
           maxUsers: 2,
           layout: "Auto"
@@ -111,7 +111,17 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
         zIndex: 1000,
         backgroundColor: '#f0f0f0'
       }}
-    />
+    >
+      <style jsx global>{`
+        .call-button {
+          position: fixed !important;
+          bottom: 20px !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          z-index: 1001 !important;
+        }
+      `}</style>
+    </div>
   );
 }
 

@@ -44,12 +44,28 @@ export default function ChatInterface() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage: Message = { role: 'user' as const, content: input };
+    const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
+      // If previous message was about consultation fee
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.content.includes('consultation fee is KES 50')) {
+        if (input.toLowerCase().includes('yes')) {
+          setShowPayment(true);
+          return;
+        } else if (input.toLowerCase().includes('no')) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'I understand. Is there anything else I can help you with?'
+          }]);
+          return;
+        }
+      }
+
+      // Regular chat flow continues...
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
