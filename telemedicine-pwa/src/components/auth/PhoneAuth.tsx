@@ -25,10 +25,20 @@ export default function PhoneAuth() {
     if (!(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'normal',
-        callback: () => {
-          console.log('reCAPTCHA resolved');
+        callback: (response: any) => {
+          console.log('reCAPTCHA resolved with response:', response);
+          // Only proceed with phone verification after reCAPTCHA is solved
+          handleSendCode();
+        },
+        'expired-callback': () => {
+          console.log('reCAPTCHA expired');
+          // Reset the verifier
+          (window as any).recaptchaVerifier = null;
         }
       });
+      
+      // Render the reCAPTCHA widget
+      (window as any).recaptchaVerifier.render();
     }
   };
 
@@ -36,11 +46,20 @@ export default function PhoneAuth() {
     try {
       setLoading(true);
       setError('');
+      
+      // Setup reCAPTCHA if not already set up
+      if (!(window as any).recaptchaVerifier) {
+        setupRecaptcha();
+        return;
+      }
+      
       const result = await signInWithPhone(phoneNumber);
       setConfirmationResult(result);
     } catch (err: any) {
       console.error('Detailed error:', err);
       setError(`Failed to send verification code: ${err.message}`);
+      // Reset on error
+      (window as any).recaptchaVerifier = null;
     } finally {
       setLoading(false);
     }
