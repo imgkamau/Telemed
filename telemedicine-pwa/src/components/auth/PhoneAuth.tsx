@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Box, 
   TextField, 
@@ -21,45 +21,54 @@ export default function PhoneAuth() {
   const { signInWithPhone, verifyCode } = useAuth();
   const router = useRouter();
 
-  const setupRecaptcha = () => {
-    if (!(window as any).recaptchaVerifier) {
+  useEffect(() => {
+    // Initialize reCAPTCHA when component mounts
+    if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'normal',
-        callback: (response: any) => {
-          console.log('reCAPTCHA resolved with response:', response);
-          // Only proceed with phone verification after reCAPTCHA is solved
-          handleSendCode();
+        callback: () => {
+          console.log('reCAPTCHA resolved');
         },
         'expired-callback': () => {
           console.log('reCAPTCHA expired');
-          // Reset the verifier
           (window as any).recaptchaVerifier = null;
         }
       });
       
-      // Render the reCAPTCHA widget
-      (window as any).recaptchaVerifier.render();
+      try {
+        (window as any).recaptchaVerifier.render();
+      } catch (error) {
+        console.error('reCAPTCHA render error:', error);
+      }
     }
-  };
+
+    // Cleanup
+    return () => {
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+          (window as any).recaptchaVerifier = null;
+        } catch (error) {
+          console.error('reCAPTCHA cleanup error:', error);
+        }
+      }
+    };
+  }, []);
 
   const handleSendCode = async () => {
     try {
       setLoading(true);
       setError('');
       
-      // Setup reCAPTCHA if not already set up
-      if (!(window as any).recaptchaVerifier) {
-        setupRecaptcha();
-        return;
-      }
+      // Format phone number if needed
+      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      console.log('Attempting to send code to:', formattedNumber);
       
-      const result = await signInWithPhone(phoneNumber);
+      const result = await signInWithPhone(formattedNumber);
       setConfirmationResult(result);
     } catch (err: any) {
-      console.error('Detailed error:', err);
+      console.error('Error sending OTP:', err);
       setError(`Failed to send verification code: ${err.message}`);
-      // Reset on error
-      (window as any).recaptchaVerifier = null;
     } finally {
       setLoading(false);
     }
