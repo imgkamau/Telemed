@@ -24,33 +24,37 @@ export default function PhoneAuth() {
   useEffect(() => {
     // Initialize reCAPTCHA when component mounts
     if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'normal',
-        callback: () => {
-          console.log('reCAPTCHA resolved');
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expired');
-          (window as any).recaptchaVerifier = null;
-        }
-      });
-      
       try {
-        (window as any).recaptchaVerifier.render();
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'normal',
+          callback: (response: any) => {
+            console.log('reCAPTCHA token:', response);
+            // Store the token or trigger verification here if needed
+          },
+          'expired-callback': () => {
+            console.log('reCAPTCHA expired');
+            if ((window as any).recaptchaVerifier) {
+              (window as any).recaptchaVerifier.clear();
+              (window as any).recaptchaVerifier = null;
+            }
+          }
+        });
+        
+        (window as any).recaptchaVerifier = verifier;
+        verifier.render().then(() => {
+          console.log('reCAPTCHA rendered successfully');
+        }).catch((error) => {
+          console.error('reCAPTCHA render error:', error);
+        });
       } catch (error) {
-        console.error('reCAPTCHA render error:', error);
+        console.error('reCAPTCHA initialization error:', error);
       }
     }
 
-    // Cleanup
     return () => {
       if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-        } catch (error) {
-          console.error('reCAPTCHA cleanup error:', error);
-        }
+        (window as any).recaptchaVerifier.clear();
+        (window as any).recaptchaVerifier = null;
       }
     };
   }, []);
