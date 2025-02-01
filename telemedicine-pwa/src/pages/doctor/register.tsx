@@ -83,28 +83,46 @@ export default function DoctorRegistration() {
         throw new Error('Please fill in all required fields');
       }
 
-      // Create auth account for doctor
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      try {
+        // Create auth account for doctor
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        
+        // Create doctor profile in Firestore
+        const doctorRef = doc(db, 'doctors', userCredential.user.uid);
+        await setDoc(doctorRef, {
+          name: formData.name,
+          specialization: formData.specialization,
+          licenseNumber: formData.licenseNumber,
+          experience: formData.experience,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          availability: true,
+          bio: formData.bio,
+          userId: userCredential.user.uid,
+          createdAt: new Date().toISOString(),
+          status: 'pending',
+          rating: 0,
+          totalRatings: 0
+        });
 
-      // Create doctor profile in Firestore
-      const doctorRef = doc(db, 'doctors', userCredential.user.uid);
-      await setDoc(doctorRef, {
-        name: formData.name,
-        specialization: formData.specialization,
-        licenseNumber: formData.licenseNumber,
-        experience: formData.experience,
-        phoneNumber: formData.phoneNumber,
-        email: formData.email,
-        availability: true,
-        bio: formData.bio,
-        userId: userCredential.user.uid,
-        createdAt: new Date().toISOString(),
-        status: 'pending',
-        rating: 0,
-        totalRatings: 0
-      });
-
-      router.push('/doctor/dashboard');
+        router.push('/doctor/dashboard');
+      } catch (error: any) {
+        console.error('Firebase error:', error.code, error.message);
+        
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            setError('This email is already registered');
+            break;
+          case 'auth/weak-password':
+            setError('Password should be at least 6 characters');
+            break;
+          case 'auth/invalid-email':
+            setError('Invalid email format');
+            break;
+          default:
+            setError(error.message || 'Registration failed. Please try again.');
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
