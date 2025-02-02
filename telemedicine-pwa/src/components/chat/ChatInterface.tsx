@@ -14,6 +14,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CONSULTATION_FEE } from '../../config/constants';
 import { useRouter } from 'next/router';
 import { useNotification } from '../../contexts/NotificationContext';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -112,69 +114,48 @@ export default function ChatInterface() {
     try {
       setLoading(true);
 
-      // PRODUCTION CODE (Commented for testing)
-      /*
-      const response = await fetch('/api/payment/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: 50,
-          phoneNumber: user?.phoneNumber,
-          assessment
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // Wait for payment confirmation
-        const confirmationResponse = await fetch('/api/payment/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkoutRequestId: data.checkoutRequestId })
-        });
-
-        const confirmationData = await confirmationResponse.json();
-        if (confirmationData.success) {
-          // Match with doctor based on assessment
-          const matchResponse = await fetch('/api/match-doctor', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ assessment })
-          });
-
-          const { doctorId } = await matchResponse.json();
-          if (doctorId) {
-            router.push(`/consultation/${doctorId}`);
-          }
-        }
-      }
-      */
-
-      // MOCK PAYMENT FOR TESTING
+      // Mock payment success for testing
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock successful payment
       const mockPaymentSuccess = true;
       
       if (mockPaymentSuccess) {
-        // Match with doctor based on assessment
+        // Match with doctors based on assessment
         const matchResponse = await fetch('/api/match-doctor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assessment })
+          body: JSON.stringify({ 
+            specialty: assessment?.specialty,
+            symptoms: assessment?.symptoms,
+            consultationId: null // Will be created in Firestore after matching
+          })
         });
 
-        const { doctorId } = await matchResponse.json();
-        if (doctorId) {
-          router.push(`/consultation/${doctorId}`);
+        const { matchedDoctors, estimatedWaitTime } = await matchResponse.json();
+        
+        if (matchedDoctors.length > 0) {
+          // Create consultation in Firestore
+          const consultationRef = await addDoc(collection(db, 'consultations'), {
+            patientId: user?.id,
+            matchedDoctors: matchedDoctors,
+            status: 'pending',
+            assessment: assessment,
+            createdAt: new Date(),
+            messages: []
+          });
+
+          router.push(`/consultation/${consultationRef.id}`);
+        } else {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Sorry, no doctors are currently available. Please try again later.'
+          }]);
         }
       }
-
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('Payment/matching error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, there was an error processing your payment. Please try again.'
+        content: 'Sorry, there was an error. Please try again.'
       }]);
     } finally {
       setLoading(false);

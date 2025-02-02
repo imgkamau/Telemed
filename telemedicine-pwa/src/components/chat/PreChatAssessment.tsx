@@ -187,45 +187,21 @@ export default function PreChatAssessment() {
     if (!user) return;
     
     try {
-      // First create the consultation document
-      const consultationRef = await addDoc(collection(db, 'consultations'), {
-        patientId: user.id,
-        patientInfo: {
-          type: patientType as 'self' | 'child' | 'other',
-          age: patientAge ? parseInt(patientAge) : undefined,
-          specialty: selectedSpecialty,
-          primarySymptom,
-        },
-        status: 'pending',
-        createdAt: new Date(),
-        messages: [],
-        prescription: null
-      });
+      // Store assessment data in context for AI chat
+      const assessmentData = {
+        type: patientType as 'self' | 'child' | 'other',
+        age: patientAge ? parseInt(patientAge) : undefined,
+        specialty: selectedSpecialty,
+        primarySymptom,
+      };
 
-      // Call AI matching endpoint
-      const matchResponse = await fetch('/api/match-doctor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          consultationId: consultationRef.id,
-          specialty: selectedSpecialty,
-          symptoms: primarySymptom
-        })
-      });
-
-      const { matchedDoctors } = await matchResponse.json();
+      setPatientInfo(assessmentData);
       
-      // Update consultation with matched doctors
-      await updateDoc(doc(db, 'consultations', consultationRef.id), {
-        matchedDoctors: matchedDoctors,
-        // This will trigger notifications for matched doctors
-        notificationSent: true
-      });
-
-      // Redirect to waiting room
-      router.push(`/consultation/${consultationRef.id}`);
+      // Redirect to AI chat first
+      router.push('/chat');
+      
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error starting chat:', error);
     }
   };
 
