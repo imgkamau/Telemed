@@ -24,11 +24,12 @@ import {
   alpha
 } from '@mui/material';
 import { Person, ChildCare, Group, ArrowForward } from '@mui/icons-material';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useRouter } from 'next/router';
 import { specialties } from '../../components/chat/InitialAssessment';
 import { useChat } from '../../contexts/ChatContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function PreChatAssessment() {
   const theme = useTheme();
@@ -39,6 +40,7 @@ export default function PreChatAssessment() {
   const [primarySymptom, setPrimarySymptom] = useState('');
   const router = useRouter();
   const { setPatientInfo } = useChat();
+  const { user } = useAuth();
 
   const steps = ['Patient Type', 'Medical Specialty', 'Symptoms'];
 
@@ -182,18 +184,48 @@ export default function PreChatAssessment() {
   };
 
   const handleStartChat = async () => {
+    if (!user) return;
+    
     try {
-      const assessmentData = {
-        type: patientType as 'self' | 'child' | 'other',
-        age: patientAge ? parseInt(patientAge) : undefined,
-        specialty: selectedSpecialty,
-        primarySymptom,
-      };
+      // First create the consultation document
+      const consultationRef = await addDoc(collection(db, 'consultations'), {
+        patientId: user.id,
+        patientInfo: {
+          type: patientType as 'self' | 'child' | 'other',
+          age: patientAge ? parseInt(patientAge) : undefined,
+          specialty: selectedSpecialty,
+          primarySymptom,
+        },
+        status: 'pending',
+        createdAt: new Date(),
+        messages: [],
+        prescription: null
+      });
 
-      setPatientInfo(assessmentData);
-      router.push('/chat');
+      // Call AI matching endpoint
+      const matchResponse = await fetch('/api/match-doctor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          consultationId: consultationRef.id,
+          specialty: selectedSpecialty,
+          symptoms: primarySymptom
+        })
+      });
+
+      const { matchedDoctors } = await matchResponse.json();
+      
+      // Update consultation with matched doctors
+      await updateDoc(doc(db, 'consultations', consultationRef.id), {
+        matchedDoctors: matchedDoctors,
+        // This will trigger notifications for matched doctors
+        notificationSent: true
+      });
+
+      // Redirect to waiting room
+      router.push(`/consultation/${consultationRef.id}`);
     } catch (error) {
-      console.error('Error starting chat:', error);
+      console.error('Error:', error);
     }
   };
 

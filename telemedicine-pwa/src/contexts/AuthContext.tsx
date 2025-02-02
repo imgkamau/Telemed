@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../config/firebase';
-import type { User } from '@/types';
+import type { User as FirebaseUser } from '@/types';
 import { 
   RecaptchaVerifier, 
   signInWithPhoneNumber, 
   ConfirmationResult,
-  User as FirebaseUser,
+  User as FirebaseUserAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -13,6 +13,16 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { useRouter } from 'next/router';
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+
+interface User {
+  id: string;
+  phoneNumber: string;
+  email: string;
+  role: 'doctor' | 'patient' | 'admin';
+  specialization?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -33,6 +43,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const createUserData = async (firebaseUser: FirebaseUserAuth) => {
+    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    const userData = userDoc.data();
+
+    return {
+      id: firebaseUser.uid,
+      phoneNumber: firebaseUser.phoneNumber || '',
+      email: firebaseUser.email || '',
+      role: userData?.role || 'patient',
+      specialization: userData?.specialization || ''
+    };
+  };
 
   const signInWithPhone = async (phoneNumber: string, retryCount = 0) => {
     try {
@@ -68,16 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyCode = async (confirmationResult: ConfirmationResult, code: string) => {
     try {
-      if (!window.confirmationResult) {
-        throw new Error('No confirmation result found');
-      }
-      const result = await window.confirmationResult.confirm(code);
-      setUser({
-        id: result.user.uid,
-        phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || '',
-        //displayName: result.user.displayName || ''
-      });
+      const result = await confirmationResult.confirm(code);
+      const userData = await createUserData(result.user);
+
+      setUser(userData);
       router.push('/chat');
     } catch (error) {
       console.error('Error confirming OTP:', error);
@@ -100,12 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      setUser({
-        id: result.user.uid,
-        phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || '',
-       // displayName: result.user.displayName || ''
-      });
+      const userData = await createUserData(result.user);
+      
+      setUser(userData);
     } catch (error: any) {
       console.error('Email sign in error:', error);
       throw error;
@@ -115,12 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUpWithEmail = async (email: string, password: string) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      setUser({
-        id: result.user.uid,
-        phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || '',
-        //displayName: result.user.displayName || ''
-      });
+      const userData = await createUserData(result.user);
+      setUser(userData);
     } catch (error: any) {
       console.error('Email sign up error:', error);
       throw error;
@@ -131,12 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      setUser({
-        id: result.user.uid,
-        phoneNumber: result.user.phoneNumber || '',
-        email: result.user.email || '',
-        //displayName: result.user.displayName || ''
-      });
+      const userData = await createUserData(result.user);
+      setUser(userData);
     } catch (error: any) {
       console.error('Google sign in error:', error);
       throw error;
@@ -144,13 +150,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? {
-        id: firebaseUser.uid,
-        phoneNumber: firebaseUser.phoneNumber || '',
-        email: firebaseUser.email || '',
-        //displayName: firebaseUser.displayName || ''
-      } : null);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Fetch additional user data from Firestore
+        const userData = await createUserData(firebaseUser);
+        
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 

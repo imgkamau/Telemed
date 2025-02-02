@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Assessment, Doctor } from '../../types';
+import type { Doctor } from '../../types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,29 +12,13 @@ export default async function handler(
   }
 
   try {
-    const { assessment } = req.body as { assessment: Assessment };
+    const { consultationId, specialty, symptoms } = req.body;
 
-    // MOCK DATA FOR TESTING
-    const mockDoctor = {
-      id: 'doctor123',
-      name: 'Dr. John Doe',
-      specialization: assessment?.specialty || 'General Practice',
-      rating: 4.8
-    };
-
-    // Return mock response
-    return res.status(200).json({ 
-      doctorId: mockDoctor.id,
-      doctorName: mockDoctor.name,
-      estimatedWaitTime: '5-10 minutes'
-    });
-
-    /* PRODUCTION CODE (Commented for testing)
     // Query doctors based on specialty and availability
     const doctorsRef = collection(db, 'doctors');
     const q = query(
       doctorsRef,
-      where('specialization', '==', assessment.specialty),
+      where('specialization', '==', specialty),
       where('availability', '==', true)
     );
 
@@ -42,25 +26,28 @@ export default async function handler(
     
     if (querySnapshot.empty) {
       return res.status(404).json({ 
-        error: 'No available doctors found for this specialty' 
+        matchedDoctors: [],
+        message: 'No available doctors found for this specialty' 
       });
     }
 
-    // Select the most suitable doctor based on urgency and rating
-    const doctors = querySnapshot.docs.map(doc => ({
+    // Get all matching doctors
+    const matchedDoctors = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
-    })) as Doctor[];
+      name: doc.data().name,
+      specialization: doc.data().specialization,
+      rating: doc.data().rating
+    }));
 
-    // Simple matching logic - can be enhanced
-    const matchedDoctor = doctors.sort((a, b) => b.rating - a.rating)[0];
+    // Sort by rating
+    const sortedDoctors = matchedDoctors.sort((a, b) => b.rating - a.rating);
 
-    res.status(200).json({ 
-      doctorId: matchedDoctor.id,
-      doctorName: matchedDoctor.name,
+    // Return top 3 matching doctors
+    return res.status(200).json({ 
+      matchedDoctors: sortedDoctors.slice(0, 3),
       estimatedWaitTime: '5-10 minutes'
     });
-    */
+
   } catch (error) {
     console.error('Doctor matching error:', error);
     res.status(500).json({ error: 'Failed to match doctor' });

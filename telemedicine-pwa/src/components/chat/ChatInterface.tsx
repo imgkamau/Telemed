@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   TextField, 
@@ -13,6 +13,7 @@ import { Send as SendIcon } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { CONSULTATION_FEE } from '../../config/constants';
 import { useRouter } from 'next/router';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -39,6 +40,14 @@ export default function ChatInterface() {
   const router = useRouter();
   const [showPayment, setShowPayment] = useState(false);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const { consultationStatus, consultationId } = useNotification();
+
+  useEffect(() => {
+    if (consultationStatus === 'accepted') {
+      // Redirect to consultation room
+      router.push(`/consultation/${consultationId}`);
+    }
+  }, [consultationStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -47,4 +47,6 @@ export interface User {
   id: string;
   phoneNumber: string;
   email: string;
+  role: 'doctor' | 'patient' | 'admin';
+  specialization?: string;
 } 

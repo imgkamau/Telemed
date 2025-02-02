@@ -33,22 +33,6 @@ export default function ConsultationRoom() {
       setTimeout(() => setLoadingMessage(text), delay);
     });
 
-    // Mock consultation data for testing
-    const mockConsultation = {
-      doctorId: 'doctor123',
-      doctorName: 'Dr. John Doe',
-      patientId: user?.id,
-      status: 'active',
-      startTime: new Date().toISOString()
-    };
-
-    // Simulate loading for testing
-    setTimeout(() => {
-      setConsultation(mockConsultation);
-      setLoading(false);
-    }, 4000);
-
-    /* PRODUCTION CODE (Commented for testing)
     const unsubscribe = onSnapshot(doc(db, 'consultations', id as string), (doc) => {
       if (doc.exists()) {
         setConsultation(doc.data());
@@ -57,7 +41,6 @@ export default function ConsultationRoom() {
     });
 
     return () => unsubscribe();
-    */
   }, [id, user]);
 
   if (loading) {

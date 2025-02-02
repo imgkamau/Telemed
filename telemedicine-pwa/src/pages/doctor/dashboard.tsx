@@ -29,9 +29,10 @@ import {
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/router';
 
 interface Appointment {
   id: string;
@@ -65,8 +66,21 @@ interface Consultation {
   symptoms: string;
 }
 
+interface PendingConsultation {
+  id: string;
+  patientInfo: {
+    type: 'self' | 'child' | 'other';
+    age?: number;
+    specialty: string;
+    primarySymptom: string;
+  };
+  status: 'pending' | 'active' | 'completed';
+  createdAt: Date;
+}
+
 export default function DoctorDashboard() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -77,6 +91,7 @@ export default function DoctorDashboard() {
   });
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [tabValue, setTabValue] = useState(0);
+  const [pendingConsultations, setPendingConsultations] = useState<PendingConsultation[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,6 +157,25 @@ export default function DoctorDashboard() {
         
         console.log('Consultations found:', consultationData.length);
         setConsultations(consultationData);
+
+        // Add pending consultations listener
+        const pendingQ = query(
+          collection(db, 'consultations'),
+          where('status', '==', 'pending'),
+          where('specialty', '==', doctorData?.specialization)
+        );
+        
+        const unsubscribePending = onSnapshot(pendingQ, (snapshot) => {
+          const pendingConsults = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as PendingConsultation[];
+          setPendingConsultations(pendingConsults);
+        });
+
+        return () => {
+          unsubscribePending();
+        };
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -150,7 +184,7 @@ export default function DoctorDashboard() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, doctorData]);
 
   const handleAvailabilityToggle = async () => {
     if (!user?.id || !doctorData) return;
@@ -183,6 +217,20 @@ export default function DoctorDashboard() {
 
   const handleJoinConsultation = (consultationId: string) => {
     window.location.href = `/consultation/${consultationId}`;
+  };
+
+  const acceptConsultation = async (consultationId: string) => {
+    if (!user?.id) return;
+    
+    try {
+      await updateDoc(doc(db, 'consultations', consultationId), {
+        doctorId: user.id,
+        status: 'active'
+      });
+      router.push(`/consultation/${consultationId}`);
+    } catch (error) {
+      console.error('Error accepting consultation:', error);
+    }
   };
 
   if (loading) {
@@ -371,6 +419,53 @@ export default function DoctorDashboard() {
                 </TableBody>
               </Table>
             </TableContainer>
+          </Paper>
+        </Grid>
+
+        {/* Pending Consultations */}
+        <Grid item xs={12} md={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Pending Consultations
+            </Typography>
+            <Grid container spacing={2}>
+              {pendingConsultations.map((consultation) => (
+                <Grid item xs={12} md={4} key={consultation.id}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        New Consultation Request
+                      </Typography>
+                      <Typography>
+                        Patient Type: {consultation.patientInfo.type}
+                        {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
+                      </Typography>
+                      <Typography>
+                        Concern: {consultation.patientInfo.primarySymptom}
+                      </Typography>
+                      <Typography color="textSecondary" gutterBottom>
+                        Requested: {new Date(consultation.createdAt).toLocaleString()}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        onClick={() => acceptConsultation(consultation.id)}
+                      >
+                        Accept Consultation
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+              {pendingConsultations.length === 0 && (
+                <Grid item xs={12}>
+                  <Typography color="textSecondary" align="center">
+                    No pending consultations
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
           </Paper>
         </Grid>
       </Grid>
