@@ -114,48 +114,43 @@ export default function ChatInterface() {
     try {
       setLoading(true);
 
-      // Mock payment success for testing
+      // MOCK PAYMENT FOR TESTING
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock successful payment
       const mockPaymentSuccess = true;
       
       if (mockPaymentSuccess) {
-        // Match with doctors based on assessment
+        // Match with doctor based on assessment
         const matchResponse = await fetch('/api/match-doctor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             specialty: assessment?.specialty,
-            symptoms: assessment?.symptoms,
-            consultationId: null // Will be created in Firestore after matching
+            symptoms: assessment?.symptoms
           })
         });
 
-        const { matchedDoctors, estimatedWaitTime } = await matchResponse.json();
-        
-        if (matchedDoctors.length > 0) {
-          // Create consultation in Firestore
+        const { matchedDoctors } = await matchResponse.json();
+        if (matchedDoctors && matchedDoctors.length > 0) {
+          // Create consultation
           const consultationRef = await addDoc(collection(db, 'consultations'), {
             patientId: user?.id,
-            matchedDoctors: matchedDoctors,
+            doctorId: matchedDoctors[0].id,
             status: 'pending',
             assessment: assessment,
-            createdAt: new Date(),
-            messages: []
+            createdAt: new Date()
           });
 
           router.push(`/consultation/${consultationRef.id}`);
-        } else {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: 'Sorry, no doctors are currently available. Please try again later.'
-          }]);
         }
       }
+
     } catch (error) {
-      console.error('Payment/matching error:', error);
+      console.error('Payment error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, there was an error. Please try again.'
+        content: 'Sorry, there was an error processing your payment. Please try again.'
       }]);
     } finally {
       setLoading(false);
