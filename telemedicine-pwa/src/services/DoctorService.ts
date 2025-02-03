@@ -1,20 +1,28 @@
-import { db } from '../config/firebase';
-import { auth } from '../config/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
+import { doc, getDoc, collection, query, where, getDocs, Firestore } from 'firebase/firestore';
+import { Auth } from 'firebase/auth';
 import { DoctorData, Appointment, PendingConsultation } from '../types/doctor';
 
 export class DoctorService {
+    private db: Firestore | undefined;
+    private auth: Auth | undefined;
+
     constructor() {
-        if (!auth.currentUser) {
-            throw new Error('No authenticated user');
+        // Only set these if we're on client side
+        if (typeof window !== 'undefined') {
+            this.db = db;
+            this.auth = auth;
         }
     }
 
     async fetchDoctorData(userId: string): Promise<DoctorData | null> {
         try {
-            if (!auth.currentUser) return null;
+            if (!this.db || !this.auth?.currentUser) {
+                console.warn('No database connection or authenticated user');
+                return null;
+            }
             console.log('Fetching doctor data for:', userId);
-            const doctorRef = doc(db, 'doctors', userId);
+            const doctorRef = doc(this.db, 'doctors', userId);
             const doctorSnap = await getDoc(doctorRef);
 
             if (!doctorSnap.exists()) {
@@ -31,7 +39,11 @@ export class DoctorService {
 
     async fetchAppointments(doctorId: string): Promise<Appointment[]> {
         try {
-            const appointmentsRef = collection(db, 'appointments');
+            if (!this.db || !this.auth?.currentUser) {
+                console.warn('No database connection or authenticated user');
+                return [];
+            }
+            const appointmentsRef = collection(this.db, 'appointments');
             const q = query(appointmentsRef, where('doctorId', '==', doctorId));
             const querySnapshot = await getDocs(q);
             
@@ -47,7 +59,11 @@ export class DoctorService {
 
     async fetchPendingConsultations(doctorId: string): Promise<PendingConsultation[]> {
         try {
-            const consultationsRef = collection(db, 'consultations');
+            if (!this.db || !this.auth?.currentUser) {
+                console.warn('No database connection or authenticated user');
+                return [];
+            }
+            const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef, 
                 where('doctorId', '==', doctorId),

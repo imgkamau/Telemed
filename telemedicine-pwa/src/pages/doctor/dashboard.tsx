@@ -134,6 +134,7 @@ export default function DoctorDashboard() {
     if (!user?.id || !doctorData) return;
 
     try {
+      if (!db) throw new Error('Database not initialized');
       const doctorRef = doc(db, 'doctors', user.id);
       await updateDoc(doctorRef, {
         availability: !doctorData.availability
@@ -148,6 +149,7 @@ export default function DoctorDashboard() {
     if (!user?.id) return;
 
     try {
+      if (!db) throw new Error('Database not initialized');
       const doctorRef = doc(db, 'doctors', user.id);
       await updateDoc(doctorRef, {
         workingHours
@@ -167,6 +169,7 @@ export default function DoctorDashboard() {
     if (!user?.id) return;
     
     try {
+      if (!db) throw new Error('Database not initialized');
       await updateDoc(doc(db, 'consultations', consultationId), {
         doctorId: user.id,
         status: 'active'

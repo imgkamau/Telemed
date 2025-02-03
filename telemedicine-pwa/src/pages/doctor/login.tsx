@@ -30,6 +30,7 @@ export default function DoctorLogin() {
     setError(null);
 
     try {
+      if (!auth) throw new Error('Auth not initialized');
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
       router.push('/doctor/dashboard');
     } catch (err) {
