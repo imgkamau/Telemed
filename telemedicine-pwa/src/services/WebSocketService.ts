@@ -5,7 +5,7 @@ export class WebSocketService {
     private reconnectDelay: number;
     private url: string;
 
-    constructor(url: string, maxRetries = 5) {
+    constructor(url: string, maxRetries = 3) {
         this.url = url;
         this.maxRetries = maxRetries;
         this.retryCount = 0;
@@ -13,11 +13,16 @@ export class WebSocketService {
     }
 
     connect() {
+        if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
+            console.log('WebSocket connection skipped - not in browser or not HTTPS');
+            return;
+        }
+
         try {
             this.ws = new WebSocket(this.url);
             this.setupEventListeners();
         } catch (error) {
-            this.handleConnectionError(error);
+            console.warn('WebSocket connection failed:', error);
         }
     }
 
