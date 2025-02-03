@@ -11,6 +11,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const zegoRef = useRef<any>(null);
+  const [audioTestResult, setAudioTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +27,24 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
         containerRef.current.style.top = '0';
         containerRef.current.style.left = '0';
         containerRef.current.style.zIndex = '1000';
+
+        // Test audio devices
+        const audioContext = new AudioContext();
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        const analyser = audioContext.createAnalyser();
+        source.connect(analyser);
+        
+        // Check if audio is being received
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        const audioDetected = dataArray.some(value => value > 0);
+        
+        if (audioDetected) {
+          console.log('Audio input detected and working');
+        } else {
+          console.warn('No audio input detected');
+        }
 
         // Debug logs
         console.log('Zego Init:', {

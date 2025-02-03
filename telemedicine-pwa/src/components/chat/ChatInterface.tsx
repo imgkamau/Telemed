@@ -96,7 +96,14 @@ export default function ChatInterface() {
           content: 'Based on your symptoms, I recommend consulting with a doctor. The consultation fee is KES 50. Would you like to proceed?' 
         }]);
         
-        setAssessment(data.assessment);
+        // Make sure assessment has all required fields
+        setAssessment({
+          specialty: data.assessment.specialty || 'General Practice', // Add default
+          urgency: data.assessment.urgency || 'low',
+          symptoms: data.assessment.symptoms || [],
+          recommendConsultation: true
+        });
+        
         setShowPayment(true);
       }
     } catch (error) {
@@ -113,6 +120,14 @@ export default function ChatInterface() {
   const handlePayment = async () => {
     try {
       setLoading(true);
+      
+      if (!assessment?.specialty) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Sorry, there was an error with the specialty. Please try again.'
+        }]);
+        return;
+      }
 
       // MOCK PAYMENT FOR TESTING
       await new Promise(resolve => setTimeout(resolve, 2000));
