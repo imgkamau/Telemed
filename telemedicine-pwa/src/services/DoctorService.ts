@@ -1,10 +1,18 @@
 import { db } from '../config/firebase';
+import { auth } from '../config/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { DoctorData, Appointment, PendingConsultation } from '../types/doctor';
 
 export class DoctorService {
+    constructor() {
+        if (!auth.currentUser) {
+            throw new Error('No authenticated user');
+        }
+    }
+
     async fetchDoctorData(userId: string): Promise<DoctorData | null> {
         try {
+            if (!auth.currentUser) return null;
             console.log('Fetching doctor data for:', userId);
             const doctorRef = doc(db, 'doctors', userId);
             const doctorSnap = await getDoc(doctorRef);
