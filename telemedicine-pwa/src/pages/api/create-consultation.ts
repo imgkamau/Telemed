@@ -11,6 +11,7 @@ export default async function handler(
   }
 
   try {
+    if (!db) throw new Error('Database not initialized');
     const { doctorId, assessment, patientId } = req.body;
 
     const consultationRef = collection(db, 'consultations');

@@ -157,6 +157,7 @@ export default function ChatInterface() {
 
         if (responseData.matchedDoctors && responseData.matchedDoctors.length > 0) {
           // Create consultation
+          if (!db) throw new Error('Database not initialized');
           const consultationRef = await addDoc(collection(db, 'consultations'), {
             patientId: user?.id,
             doctorId: responseData.matchedDoctors[0].id,

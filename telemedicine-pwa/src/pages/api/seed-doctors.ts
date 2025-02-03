@@ -40,6 +40,7 @@ export default async function handler(
   }
 
   try {
+    if (!db) throw new Error('Database not initialized');
     const doctorsRef = collection(db, 'doctors');
     
     for (const doctor of sampleDoctors) {

@@ -25,6 +25,7 @@ export default function PhoneAuth() {
     // Initialize reCAPTCHA when component mounts
     if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
       try {
+        if (!auth) throw new Error('Auth not initialized');
         const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'normal',
           callback: (response: any) => {

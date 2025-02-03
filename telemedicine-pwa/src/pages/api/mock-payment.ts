@@ -17,6 +17,7 @@ export default async function handler(
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Create mock payment record
+    if (!db) throw new Error('Database not initialized');
     const paymentRef = collection(db, 'payments');
     const payment = await addDoc(paymentRef, {
       amount,

@@ -49,6 +49,7 @@ export default function DoctorApprovals() {
 
   const fetchApplications = async () => {
     try {
+      if (!db) throw new Error('Database not initialized');
       const doctorsRef = collection(db, 'doctors');
       const q = query(doctorsRef, where('status', '==', 'pending'));
       const querySnapshot = await getDocs(q);
@@ -71,10 +72,12 @@ export default function DoctorApprovals() {
 
   const handleStatusUpdate = async (doctorId: string, newStatus: 'approved' | 'rejected') => {
     try {
+      if (!db) throw new Error('Database not initialized');
       const doctorRef = doc(db, 'doctors', doctorId);
       await updateDoc(doctorRef, {
         status: newStatus,
         updatedAt: new Date().toISOString()
+
       });
       
       // Update local state

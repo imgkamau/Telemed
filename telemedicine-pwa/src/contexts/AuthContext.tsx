@@ -45,8 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const createUserData = async (firebaseUser: FirebaseUserAuth) => {
+    if (!db) throw new Error('Database not initialized');
     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
     const userData = userDoc.data();
+
 
     return {
       id: firebaseUser.uid,
@@ -65,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Wait 5 seconds between retries
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
+      
+      if (!auth) throw new Error('Auth not initialized');
       
       // Clear existing reCAPTCHA
       if ((window as any).recaptchaVerifier) {
@@ -105,9 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      if (!auth) throw new Error('Auth not initialized');
       await auth.signOut();
       setUser(null);
       router.push('/auth/login');
+
     } catch (error) {
       console.error('Error signing out:', error);
       setError('Error signing out');
@@ -116,9 +122,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
+      if (!auth) throw new Error('Auth not initialized');
       const result = await signInWithEmailAndPassword(auth, email, password);
       const userData = await createUserData(result.user);
       
+
       setUser(userData);
     } catch (error: any) {
       console.error('Email sign in error:', error);
@@ -128,10 +136,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
+      if (!auth) throw new Error('Auth not initialized');
       const result = await createUserWithEmailAndPassword(auth, email, password);
       const userData = await createUserData(result.user);
       setUser(userData);
     } catch (error: any) {
+
       console.error('Email sign up error:', error);
       throw error;
     }
@@ -139,10 +149,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      if (!auth) throw new Error('Auth not initialized');
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const userData = await createUserData(result.user);
       setUser(userData);
+
     } catch (error: any) {
       console.error('Google sign in error:', error);
       throw error;
@@ -150,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    if (!auth) throw new Error('Auth not initialized');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Fetch additional user data from Firestore

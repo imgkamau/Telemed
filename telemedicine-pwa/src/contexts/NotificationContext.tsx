@@ -37,10 +37,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     // For doctors: Listen for pending consultations in their specialty
     if (user.role === 'doctor') {
+      if (!db) throw new Error('Database not initialized');
       const q = query(
         collection(db, 'consultations'),
         where('status', '==', 'pending'),
         where('specialty', '==', user.specialization)
+
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -56,10 +58,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     // For patients: Listen for their active consultation
     if (user.role === 'patient') {
+      if (!db) throw new Error('Database not initialized');
       const q = query(
         collection(db, 'consultations'),
         where('patientId', '==', user.id),
         where('status', 'in', ['pending', 'active'])
+
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {

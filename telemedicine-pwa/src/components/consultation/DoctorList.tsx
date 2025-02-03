@@ -29,6 +29,7 @@ export default function DoctorList() {
     const fetchDoctors = async () => {
       try {
         console.log('Starting to fetch doctors...'); // Debug log
+        if (!db) throw new Error('Database not initialized');
         const doctorsRef = collection(db, 'doctors');
         console.log('Collection reference created'); // Debug log
         

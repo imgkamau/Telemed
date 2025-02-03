@@ -52,10 +52,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const fetchDoctors = async () => {
+      if (!db) throw new Error('Database not initialized');
       const doctorsRef = collection(db, 'doctors');
       const doctorsSnap = await getDocs(doctorsRef);
       const doctors = doctorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Doctor));
       setAvailableDoctors(doctors);
+
     };
 
     fetchDoctors();

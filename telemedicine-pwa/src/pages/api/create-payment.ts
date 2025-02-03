@@ -13,7 +13,7 @@ export default async function handler(
   try {
     const { amount, doctorId, userId, consultationData } = req.body;
 
-    // Create a payment record
+    if (!db) throw new Error('Database not initialized');
     const paymentRef = collection(db, 'payments');
     const payment = await addDoc(paymentRef, {
       amount,
