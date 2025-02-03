@@ -50,13 +50,20 @@ export default async function handler(
     const primaryQuery = query(
       doctorsRef,
       where('specialization', '==', specialty),
-      where('isAvailable', '==', true),
-      where('isActive', '==', true),
+      where('availability', '==', true),
       orderBy('rating', 'desc'),
       limit(5)
     );
 
-    console.log('Executing primary query...');
+    console.log('Executing primary query with:', {
+      specialty,
+      collection: 'doctors',
+      conditions: {
+        specialization: specialty,
+        availability: true
+      }
+    });
+
     const querySnapshot = await getDocs(primaryQuery);
     console.log('Query results:', {
       size: querySnapshot.size,
@@ -69,14 +76,18 @@ export default async function handler(
       
       const fallbackQuery = query(
         doctorsRef,
-        where('canHandleGeneral', '==', true),
-        where('isAvailable', '==', true),
-        where('isActive', '==', true),
+        where('specialization', '==', 'General Practice'),
+        where('availability', '==', true),
         orderBy('rating', 'desc'),
         limit(3)
       );
 
       const fallbackSnapshot = await getDocs(fallbackQuery);
+      console.log('Fallback query results:', {
+        size: fallbackSnapshot.size,
+        empty: fallbackSnapshot.empty,
+        docs: fallbackSnapshot.docs.map(d => d.id)
+      });
       
       if (fallbackSnapshot.empty) {
         return res.status(200).json({ 
@@ -90,16 +101,18 @@ export default async function handler(
         });
       }
 
-      const fallbackDoctors = fallbackSnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name,
-        specialization: doc.data().specialization,
-        rating: doc.data().rating,
-        experience: doc.data().experience,
-        availability: true,
-        imageUrl: doc.data().imageUrl || '',
-        consultationFee: doc.data().consultationFee
-      }));
+      const fallbackDoctors = fallbackSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          specialization: data.specialization,
+          rating: data.rating || 0,
+          availability: true,
+          imageUrl: data.imageUrl || '',
+          consultationFee: data.consultationFee || 0
+        };
+      });
 
       return res.status(200).json({ 
         matchedDoctors: fallbackDoctors,
@@ -118,11 +131,10 @@ export default async function handler(
         id: doc.id,
         name: data.name,
         specialization: data.specialization,
-        rating: data.rating,
-        experience: data.experience,
+        rating: data.rating || 0,
         availability: true,
         imageUrl: data.imageUrl || '',
-        consultationFee: data.consultationFee
+        consultationFee: data.consultationFee || 0
       };
     });
 
