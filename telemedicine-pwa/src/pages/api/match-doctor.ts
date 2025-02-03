@@ -21,7 +21,11 @@ interface MatchDoctorResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<MatchDoctorResponse | { error: string; details?: string }>
+  res: NextApiResponse<MatchDoctorResponse | { 
+    error: string; 
+    details?: string;
+    debug?: any;
+  }>
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -66,6 +70,31 @@ export default async function handler(
       empty: querySnapshot.empty,
       docs: querySnapshot.docs.map(d => d.id)
     });
+
+    // Send debug info in response during development
+    const debugInfo: {
+      receivedSpecialty: string;
+      dbInitialized: boolean;
+      timestamp: string;
+      environment: string;
+      queryResults?: any;
+    } = {
+      receivedSpecialty: specialty,
+      dbInitialized: !!db,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    };
+
+    // Include query results in debug info
+    debugInfo.queryResults = {
+      totalDocs: querySnapshot.size,
+      isEmpty: querySnapshot.empty,
+      docs: querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        specialization: doc.data().specialization,
+        availability: doc.data().availability
+      }))
+    };
 
     if (querySnapshot.empty) {
       console.log('No exact specialty match, trying fallback...');
@@ -161,7 +190,12 @@ export default async function handler(
     console.error('Doctor matching error:', error);
     return res.status(500).json({ 
       error: 'Failed to match doctor',
-      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+      details: error instanceof Error ? error.message : 'Unknown error',
+      debug: process.env.NODE_ENV === 'development' ? {
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        errorStack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString()
+      } : undefined
     });
   }
 }
