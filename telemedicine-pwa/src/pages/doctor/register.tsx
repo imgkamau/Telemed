@@ -83,10 +83,12 @@ export default function DoctorRegistration() {
         throw new Error('Please fill in all required fields');
       }
 
+      if (!auth) throw new Error('Auth not initialized');
       try {
         // Create auth account for doctor
         const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         
+        if (!db) throw new Error('Database not initialized');
         // Create doctor profile in Firestore
         const doctorRef = doc(db, 'doctors', userCredential.user.uid);
         await setDoc(doctorRef, {

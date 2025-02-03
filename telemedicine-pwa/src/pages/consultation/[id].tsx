@@ -33,6 +33,7 @@ export default function ConsultationRoom() {
       setTimeout(() => setLoadingMessage(text), delay);
     });
 
+    if (!db) return;
     const unsubscribe = onSnapshot(doc(db, 'consultations', id as string), (doc) => {
       if (doc.exists()) {
         setConsultation(doc.data());

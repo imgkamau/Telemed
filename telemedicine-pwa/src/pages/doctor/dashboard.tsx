@@ -383,13 +383,19 @@ export default function DoctorDashboard() {
                       <Typography variant="h6" gutterBottom>
                         New Consultation Request
                       </Typography>
-                      <Typography>
-                        Patient Type: {consultation.patientInfo.type}
-                        {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
-                      </Typography>
-                      <Typography>
-                        Concern: {consultation.patientInfo.primarySymptom}
-                      </Typography>
+                      {consultation.patientInfo ? (
+                        <>
+                          <Typography>
+                            Patient Type: {consultation.patientInfo.type}
+                            {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
+                          </Typography>
+                          <Typography>
+                            Concern: {consultation.patientInfo.primarySymptom}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography>Patient information not available</Typography>
+                      )}
                       <Typography color="textSecondary" gutterBottom>
                         Requested: {new Date(consultation.createdAt).toLocaleString()}
                       </Typography>
