@@ -28,13 +28,7 @@ export default async function handler(
   }
 
   try {
-    if (!db) {
-      console.error('Firestore connection failed');
-      return res.status(500).json({ 
-        error: 'Database connection error',
-        details: 'Failed to connect to Firestore'
-      });
-    }
+    if (!db) throw new Error('Database not initialized');
 
     const { specialty, symptoms = [] } = req.body as MatchDoctorRequest;
     console.log('Processing match request:', { 
@@ -124,10 +118,10 @@ export default async function handler(
           id: doc.id,
           name: data.name,
           specialization: data.specialization,
-          availability: true,
-          imageUrl: data.imageUrl || '',
-          consultationFee: data.consultationFee || 0,
-          rating: 0
+          availability: data.availability,
+          experience: data.experience,
+          rating: data.rating || 0,
+          bio: data.bio || ''
         };
       });
 
@@ -148,10 +142,10 @@ export default async function handler(
         id: doc.id,
         name: data.name,
         specialization: data.specialization,
-        availability: true,
-        imageUrl: data.imageUrl || '',
-        consultationFee: data.consultationFee || 0,
-        rating: 0
+        availability: data.availability,
+        experience: data.experience,
+        rating: data.rating || 0,
+        bio: data.bio || ''
       };
     });
 
@@ -174,6 +168,7 @@ export default async function handler(
 
 async function calculateRealTimeAvailability(doctors: Doctor[]) {
   try {
+    if (!db) throw new Error('Database not initialized');
     const consultationsRef = collection(db, 'consultations');
     const activeConsultations = query(
       consultationsRef,
@@ -220,6 +215,7 @@ function calculateWaitTime(doctorLoads: { [key: string]: number }) {
 
 async function simpleFallbackMatching() {
   try {
+    if (!db) throw new Error('Database not initialized');
     const doctorsRef = collection(db, 'doctors');
     const simpleQuery = query(
       doctorsRef,
@@ -234,10 +230,10 @@ async function simpleFallbackMatching() {
         id: doc.id,
         name: data.name,
         specialization: data.specialization,
-        availability: true,
-        imageUrl: data.imageUrl || '',
-        consultationFee: data.consultationFee || 0,
-        rating: 0
+        availability: data.availability,
+        experience: data.experience,
+        rating: data.rating || 0,
+        bio: data.bio || ''
       };
     });
   } catch (error) {
