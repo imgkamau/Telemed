@@ -3,6 +3,7 @@ import { db } from '../../config/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Doctor } from '@/types';
 
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -12,8 +13,17 @@ export default async function handler(
   }
 
   try {
+    // Verify Firestore connection
+    if (!db) {
+      console.error('Firestore connection failed');
+      return res.status(500).json({ 
+        error: 'Database connection error',
+        details: 'Failed to connect to Firestore'
+      });
+    }
+
     const { specialty, symptoms, patientLocation } = req.body;
-    console.log('Request body:', req.body);
+    console.log('Processing match request:', { specialty, symptoms, patientLocation });
 
     if (!specialty) {
       return res.status(400).json({ 
@@ -22,7 +32,7 @@ export default async function handler(
       });
     }
 
-    // Primary query: Match by specialty and current availability
+    // Primary query with detailed logging
     const doctorsRef = collection(db, 'doctors');
     const primaryQuery = query(
       doctorsRef,
@@ -30,11 +40,16 @@ export default async function handler(
       where('isAvailable', '==', true),
       where('isActive', '==', true),
       orderBy('rating', 'desc'),
-      limit(5) // Get top 5 matching doctors
+      limit(5)
     );
 
+    console.log('Executing primary query...');
     const querySnapshot = await getDocs(primaryQuery);
-    console.log('Primary query result size:', querySnapshot.size);
+    console.log('Query results:', {
+      size: querySnapshot.size,
+      empty: querySnapshot.empty,
+      docs: querySnapshot.docs.map(d => d.id)
+    });
 
     // If no exact specialty match, try fallback matching
     if (querySnapshot.empty) {
@@ -105,9 +120,11 @@ export default async function handler(
 
   } catch (error) {
     console.error('Doctor matching error:', error);
+    // More detailed error response
     return res.status(500).json({ 
       error: 'Failed to match doctor',
-      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
+      timestamp: new Date().toISOString()
     });
   }
 }
