@@ -33,6 +33,8 @@ import { doc, getDoc, updateDoc, collection, query, where, getDocs, onSnapshot }
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
+import { WebSocketService } from '../../services/WebSocketService';
+import { DoctorService } from '../../services/DoctorService';
 
 interface Appointment {
   id: string;
@@ -78,6 +80,10 @@ interface PendingConsultation {
   createdAt: Date;
 }
 
+// Initialize services outside the component
+const webSocketService = new WebSocketService('wss://weblogger1029353476-api.coolzcloud.com/log');
+const doctorService = new DoctorService();
+
 export default function DoctorDashboard() {
   const { user } = useAuth();
   const router = useRouter();
@@ -101,81 +107,14 @@ export default function DoctorDashboard() {
       }
 
       try {
-        console.log('Fetching doctor data for:', user.id);
-        
-        // Fetch doctor data
-        const doctorRef = doc(db, 'doctors', user.id);
-        const doctorSnap = await getDoc(doctorRef);
-        
-        if (doctorSnap.exists()) {
-          console.log('Doctor data found:', doctorSnap.data());
-          setDoctorData(doctorSnap.data() as DoctorData);
-        } else {
-          console.log('No doctor document found');
-          // Add default data for new doctors
-          const defaultDoctorData: DoctorData = {
-            name: '',
-            specialization: '',
-            availability: true,
-            rating: 0,
-            totalRatings: 0,
-            consultationFee: '0'
-          };
-          setDoctorData(defaultDoctorData);
-        }
+        setLoading(true);
+        const doctorData = await doctorService.fetchDoctorData(user.id);
+        const appointments = await doctorService.fetchAppointments(user.id);
+        const pendingConsultations = await doctorService.fetchPendingConsultations(user.id);
 
-        // Fetch appointments
-        console.log('Fetching appointments...');
-        const appointmentsRef = collection(db, 'appointments');
-        const q = query(appointmentsRef, where('doctorId', '==', user.id));
-        const querySnapshot = await getDocs(q);
-        
-        const appointmentsList: Appointment[] = [];
-        querySnapshot.forEach((doc) => {
-          appointmentsList.push({ id: doc.id, ...doc.data() } as Appointment);
-        });
-        
-        console.log('Appointments found:', appointmentsList.length);
-        setAppointments(appointmentsList);
-
-        // Fetch consultations
-        console.log('Fetching consultations...');
-        const consultationsRef = collection(db, 'consultations');
-        const consultationsQ = query(
-          consultationsRef,
-          where('doctorId', '==', user.id)
-        );
-        const consultationsQuerySnapshot = await getDocs(consultationsQ);
-        
-        const consultationData: Consultation[] = [];
-        consultationsQuerySnapshot.forEach((doc) => {
-          consultationData.push({
-            id: doc.id,
-            ...doc.data()
-          } as Consultation);
-        });
-        
-        console.log('Consultations found:', consultationData.length);
-        setConsultations(consultationData);
-
-        // Add pending consultations listener
-        const pendingQ = query(
-          collection(db, 'consultations'),
-          where('status', '==', 'pending'),
-          where('specialty', '==', doctorData?.specialization)
-        );
-        
-        const unsubscribePending = onSnapshot(pendingQ, (snapshot) => {
-          const pendingConsults = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as PendingConsultation[];
-          setPendingConsultations(pendingConsults);
-        });
-
-        return () => {
-          unsubscribePending();
-        };
+        setDoctorData(doctorData);
+        setAppointments(appointments);
+        setPendingConsultations(pendingConsultations);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -184,7 +123,12 @@ export default function DoctorDashboard() {
     };
 
     fetchData();
-  }, [user, doctorData]);
+    webSocketService.connect();
+
+    return () => {
+      webSocketService.disconnect();
+    };
+}, [user?.id]);
 
   const handleAvailabilityToggle = async () => {
     if (!user?.id || !doctorData) return;
