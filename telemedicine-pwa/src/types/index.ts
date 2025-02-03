@@ -3,9 +3,14 @@ export interface Doctor {
   name: string;
   specialization: string;
   availability: boolean;
+  isAvailable: boolean;
+  isActive: boolean;
   rating: number;
   imageUrl: string;
   consultationFee: number;
+  experience: number;
+  languages: string[];
+  canHandleGeneral: boolean;
 }
 
 export interface Assessment {
@@ -24,6 +29,8 @@ export interface Consultation {
   createdAt: Date;
   messages: Message[];
   prescription: Prescription | null;
+  startTime: Date;
+  estimatedWaitTime?: string;
 }
 
 export interface Prescription {
@@ -49,4 +56,10 @@ export interface User {
   email: string;
   role: 'doctor' | 'patient' | 'admin';
   specialization?: string;
-} 
+}
+
+export const COLLECTIONS = {
+  DOCTORS: 'doctors',
+  CONSULTATIONS: 'consultations',
+  USERS: 'users'
+} as const; 

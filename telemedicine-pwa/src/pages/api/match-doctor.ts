@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Doctor } from '../../types';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import type { Doctor } from '@/types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,19 +12,8 @@ export default async function handler(
   }
 
   try {
-    // For testing, return mock data first
-    return res.status(200).json({ 
-      matchedDoctors: [{
-        id: 'test-doctor',
-        name: 'Dr. Test',
-        specialization: req.body.specialty,
-        rating: 4.8
-      }]
-    });
-
-    /* Real implementation after testing
-    const { specialty, symptoms } = req.body;
-    console.log('Request body:', req.body); // Log entire request body
+    const { specialty, symptoms, patientLocation } = req.body;
+    console.log('Request body:', req.body);
 
     if (!specialty) {
       return res.status(400).json({ 
@@ -33,44 +22,140 @@ export default async function handler(
       });
     }
 
-    // Query doctors based on specialty and availability
+    // Primary query: Match by specialty and current availability
     const doctorsRef = collection(db, 'doctors');
-    console.log('Querying for specialty:', specialty);
-
-    const q = query(
+    const primaryQuery = query(
       doctorsRef,
       where('specialization', '==', specialty),
-      where('availability', '==', true)
+      where('isAvailable', '==', true),
+      where('isActive', '==', true),
+      orderBy('rating', 'desc'),
+      limit(5) // Get top 5 matching doctors
     );
 
-    const querySnapshot = await getDocs(q);
-    console.log('Query result size:', querySnapshot.size);
+    const querySnapshot = await getDocs(primaryQuery);
+    console.log('Primary query result size:', querySnapshot.size);
 
+    // If no exact specialty match, try fallback matching
     if (querySnapshot.empty) {
+      console.log('No exact specialty match, trying fallback...');
+      
+      // Fallback query: Match doctors who can handle general consultations
+      const fallbackQuery = query(
+        doctorsRef,
+        where('canHandleGeneral', '==', true),
+        where('isAvailable', '==', true),
+        where('isActive', '==', true),
+        orderBy('rating', 'desc'),
+        limit(3)
+      );
+
+      const fallbackSnapshot = await getDocs(fallbackQuery);
+      
+      if (fallbackSnapshot.empty) {
+        return res.status(200).json({ 
+          matchedDoctors: [],
+          message: 'No available doctors found at this time',
+          suggestedWaitTime: '15-20 minutes'
+        });
+      }
+
+      const fallbackDoctors = fallbackSnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        specialization: doc.data().specialization,
+        rating: doc.data().rating,
+        experience: doc.data().experience,
+        isFallback: true,
+        estimatedWaitTime: '5-10 minutes'
+      }));
+
       return res.status(200).json({ 
-        matchedDoctors: [],
-        message: 'No available doctors found for this specialty' 
+        matchedDoctors: fallbackDoctors,
+        isFallbackMatch: true,
+        message: 'Matched with available general practitioners'
       });
     }
 
-    const matchedDoctors = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      specialization: doc.data().specialization,
-      rating: doc.data().rating
-    }));
+    // Process primary matched doctors
+    const matchedDoctors = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        specialization: data.specialization,
+        rating: data.rating,
+        experience: data.experience,
+        languages: data.languages || ['English'],
+        estimatedWaitTime: '1-5 minutes',
+        consultationFee: data.consultationFee,
+        availability: data.isAvailable || true,
+        imageUrl: data.imageUrl || ''
+      };
+    });
 
-    console.log('Matched doctors:', matchedDoctors);
+    // Calculate real-time availability and wait times
+    const availabilityInfo = await calculateRealTimeAvailability(matchedDoctors);
 
     return res.status(200).json({ 
       matchedDoctors,
-      estimatedWaitTime: '5-10 minutes'
+      availabilityInfo,
+      estimatedWaitTime: availabilityInfo.estimatedWaitTime
     });
-    */
+
   } catch (error) {
     console.error('Doctor matching error:', error);
     return res.status(500).json({ 
-      error: 'Failed to match doctor'
+      error: 'Failed to match doctor',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
+}
+
+async function calculateRealTimeAvailability(doctors: Doctor[]) {
+  try {
+    // Get current active consultations for these doctors
+    const consultationsRef = collection(db, 'consultations');
+    const activeConsultations = query(
+      consultationsRef,
+      where('doctorId', 'in', doctors.map(d => d.id)),
+      where('status', 'in', ['active', 'waiting'])
+    );
+
+    const consultationsSnapshot = await getDocs(activeConsultations);
+    
+    // Calculate wait times and availability
+    const doctorLoads: { [key: string]: number } = {};
+    consultationsSnapshot.forEach(doc => {
+      const consultation = doc.data();
+      if (!doctorLoads[consultation.doctorId]) {
+        doctorLoads[consultation.doctorId] = 0;
+      }
+      doctorLoads[consultation.doctorId]++;
+    });
+
+    return {
+      doctorLoads,
+      estimatedWaitTime: calculateWaitTime(doctorLoads),
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('Error calculating availability:', error);
+    return {
+      doctorLoads: {},
+      estimatedWaitTime: '5-10 minutes', // fallback estimate
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+function calculateWaitTime(doctorLoads: { [key: string]: number }) {
+  const averageLoad = Object.values(doctorLoads).reduce((sum, load) => sum + load, 0) / 
+                     Object.keys(doctorLoads).length || 0;
+  
+  if (averageLoad === 0) return '1-5 minutes';
+  if (averageLoad <= 2) return '5-10 minutes';
+  if (averageLoad <= 4) return '10-15 minutes';
+  return '15+ minutes';
 } 
