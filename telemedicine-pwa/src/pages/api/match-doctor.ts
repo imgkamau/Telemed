@@ -36,8 +36,11 @@ export default async function handler(
       });
     }
 
-    const { specialty, symptoms } = req.body as MatchDoctorRequest;
-    console.log('Processing match request:', { specialty, symptoms });
+    const { specialty, symptoms = [] } = req.body as MatchDoctorRequest;
+    console.log('Processing match request:', { 
+      specialty, 
+      symptoms: symptoms.length ? symptoms : 'No symptoms provided'
+    });
 
     if (!specialty) {
       return res.status(400).json({ 
@@ -51,7 +54,6 @@ export default async function handler(
       doctorsRef,
       where('specialization', '==', specialty),
       where('availability', '==', true),
-      orderBy('rating', 'desc'),
       limit(5)
     );
 
@@ -78,7 +80,6 @@ export default async function handler(
         doctorsRef,
         where('specialization', '==', 'General Practice'),
         where('availability', '==', true),
-        orderBy('rating', 'desc'),
         limit(3)
       );
 
@@ -90,6 +91,22 @@ export default async function handler(
       });
       
       if (fallbackSnapshot.empty) {
+        console.log('Both primary and GP fallback failed, trying simple availability matching...');
+        const simpleFallbackDoctors = await simpleFallbackMatching();
+        
+        if (simpleFallbackDoctors.length > 0) {
+          return res.status(200).json({ 
+            matchedDoctors: simpleFallbackDoctors,
+            availabilityInfo: {
+              doctorLoads: {},
+              estimatedWaitTime: '10-15 minutes',
+              timestamp: new Date().toISOString()
+            },
+            message: 'Matched with any available doctors (simple fallback)'
+          });
+        }
+        
+        // If even simple fallback fails, return no doctors found
         return res.status(200).json({ 
           matchedDoctors: [],
           availabilityInfo: {
@@ -107,10 +124,10 @@ export default async function handler(
           id: doc.id,
           name: data.name,
           specialization: data.specialization,
-          rating: data.rating || 0,
           availability: true,
           imageUrl: data.imageUrl || '',
-          consultationFee: data.consultationFee || 0
+          consultationFee: data.consultationFee || 0,
+          rating: 0
         };
       });
 
@@ -131,10 +148,10 @@ export default async function handler(
         id: doc.id,
         name: data.name,
         specialization: data.specialization,
-        rating: data.rating || 0,
         availability: true,
         imageUrl: data.imageUrl || '',
-        consultationFee: data.consultationFee || 0
+        consultationFee: data.consultationFee || 0,
+        rating: 0
       };
     });
 
@@ -199,4 +216,32 @@ function calculateWaitTime(doctorLoads: { [key: string]: number }) {
   if (averageLoad <= 2) return '5-10 minutes';
   if (averageLoad <= 4) return '10-15 minutes';
   return '15+ minutes';
+}
+
+async function simpleFallbackMatching() {
+  try {
+    const doctorsRef = collection(db, 'doctors');
+    const simpleQuery = query(
+      doctorsRef,
+      where('availability', '==', true),
+      limit(5)
+    );
+
+    const snapshot = await getDocs(simpleQuery);
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        specialization: data.specialization,
+        availability: true,
+        imageUrl: data.imageUrl || '',
+        consultationFee: data.consultationFee || 0,
+        rating: 0
+      };
+    });
+  } catch (error) {
+    console.error('Simple fallback matching error:', error);
+    return [];
+  }
 } 
