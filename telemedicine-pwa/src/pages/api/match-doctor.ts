@@ -12,10 +12,31 @@ export default async function handler(
   }
 
   try {
-    const { consultationId, specialty, symptoms } = req.body;
+    // For testing, return mock data first
+    return res.status(200).json({ 
+      matchedDoctors: [{
+        id: 'test-doctor',
+        name: 'Dr. Test',
+        specialization: req.body.specialty,
+        rating: 4.8
+      }]
+    });
+
+    /* Real implementation after testing
+    const { specialty, symptoms } = req.body;
+    console.log('Request body:', req.body); // Log entire request body
+
+    if (!specialty) {
+      return res.status(400).json({ 
+        error: 'Missing specialty',
+        receivedData: req.body 
+      });
+    }
 
     // Query doctors based on specialty and availability
     const doctorsRef = collection(db, 'doctors');
+    console.log('Querying for specialty:', specialty);
+
     const q = query(
       doctorsRef,
       where('specialization', '==', specialty),
@@ -23,15 +44,15 @@ export default async function handler(
     );
 
     const querySnapshot = await getDocs(q);
-    
+    console.log('Query result size:', querySnapshot.size);
+
     if (querySnapshot.empty) {
-      return res.status(404).json({ 
+      return res.status(200).json({ 
         matchedDoctors: [],
         message: 'No available doctors found for this specialty' 
       });
     }
 
-    // Get all matching doctors
     const matchedDoctors = querySnapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
@@ -39,17 +60,17 @@ export default async function handler(
       rating: doc.data().rating
     }));
 
-    // Sort by rating
-    const sortedDoctors = matchedDoctors.sort((a, b) => b.rating - a.rating);
+    console.log('Matched doctors:', matchedDoctors);
 
-    // Return top 3 matching doctors
     return res.status(200).json({ 
-      matchedDoctors: sortedDoctors.slice(0, 3),
+      matchedDoctors,
       estimatedWaitTime: '5-10 minutes'
     });
-
+    */
   } catch (error) {
     console.error('Doctor matching error:', error);
-    res.status(500).json({ error: 'Failed to match doctor' });
+    return res.status(500).json({ 
+      error: 'Failed to match doctor'
+    });
   }
 } 

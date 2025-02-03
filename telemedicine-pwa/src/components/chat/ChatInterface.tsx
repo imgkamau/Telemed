@@ -121,28 +121,41 @@ export default function ChatInterface() {
       const mockPaymentSuccess = true;
       
       if (mockPaymentSuccess) {
+        // Log the assessment data
+        console.log('Assessment data:', assessment);
+        
+        const requestData = { 
+          specialty: assessment?.specialty,
+          symptoms: assessment?.symptoms
+        };
+        console.log('Sending to match-doctor:', requestData);
+
         // Match with doctor based on assessment
         const matchResponse = await fetch('/api/match-doctor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            specialty: assessment?.specialty,
-            symptoms: assessment?.symptoms
-          })
+          body: JSON.stringify(requestData)
         });
 
-        const { matchedDoctors } = await matchResponse.json();
-        if (matchedDoctors && matchedDoctors.length > 0) {
+        const responseData = await matchResponse.json();
+        console.log('Match doctor response:', responseData);
+
+        if (responseData.matchedDoctors && responseData.matchedDoctors.length > 0) {
           // Create consultation
           const consultationRef = await addDoc(collection(db, 'consultations'), {
             patientId: user?.id,
-            doctorId: matchedDoctors[0].id,
+            doctorId: responseData.matchedDoctors[0].id,
             status: 'pending',
             assessment: assessment,
             createdAt: new Date()
           });
 
           router.push(`/consultation/${consultationRef.id}`);
+        } else {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Sorry, no doctors are currently available. Please try again later.'
+          }]);
         }
       }
 
