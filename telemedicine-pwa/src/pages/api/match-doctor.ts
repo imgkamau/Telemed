@@ -3,17 +3,31 @@ import { db } from '../../config/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Doctor } from '@/types';
 
+interface MatchDoctorRequest {
+  specialty: string;
+  symptoms: string[];
+  patientLocation?: string;
+}
+
+interface MatchDoctorResponse {
+  matchedDoctors: Doctor[];
+  availabilityInfo: {
+    doctorLoads: { [key: string]: number };
+    estimatedWaitTime: string;
+    timestamp: string;
+  };
+  message?: string;
+}
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<MatchDoctorResponse | { error: string; details?: string }>
 ) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Verify Firestore connection
     if (!db) {
       console.error('Firestore connection failed');
       return res.status(500).json({ 
@@ -22,17 +36,16 @@ export default async function handler(
       });
     }
 
-    const { specialty, symptoms, patientLocation } = req.body;
-    console.log('Processing match request:', { specialty, symptoms, patientLocation });
+    const { specialty, symptoms } = req.body as MatchDoctorRequest;
+    console.log('Processing match request:', { specialty, symptoms });
 
     if (!specialty) {
       return res.status(400).json({ 
         error: 'Missing specialty',
-        receivedData: req.body 
+        details: 'Specialty is required'
       });
     }
 
-    // Primary query with detailed logging
     const doctorsRef = collection(db, 'doctors');
     const primaryQuery = query(
       doctorsRef,
@@ -51,11 +64,9 @@ export default async function handler(
       docs: querySnapshot.docs.map(d => d.id)
     });
 
-    // If no exact specialty match, try fallback matching
     if (querySnapshot.empty) {
       console.log('No exact specialty match, trying fallback...');
       
-      // Fallback query: Match doctors who can handle general consultations
       const fallbackQuery = query(
         doctorsRef,
         where('canHandleGeneral', '==', true),
@@ -70,8 +81,12 @@ export default async function handler(
       if (fallbackSnapshot.empty) {
         return res.status(200).json({ 
           matchedDoctors: [],
-          message: 'No available doctors found at this time',
-          suggestedWaitTime: '15-20 minutes'
+          availabilityInfo: {
+            doctorLoads: {},
+            estimatedWaitTime: '15-20 minutes',
+            timestamp: new Date().toISOString()
+          },
+          message: 'No available doctors found at this time'
         });
       }
 
@@ -81,18 +96,22 @@ export default async function handler(
         specialization: doc.data().specialization,
         rating: doc.data().rating,
         experience: doc.data().experience,
-        isFallback: true,
-        estimatedWaitTime: '5-10 minutes'
+        availability: true,
+        imageUrl: doc.data().imageUrl || '',
+        consultationFee: doc.data().consultationFee
       }));
 
       return res.status(200).json({ 
         matchedDoctors: fallbackDoctors,
-        isFallbackMatch: true,
+        availabilityInfo: {
+          doctorLoads: {},
+          estimatedWaitTime: '5-10 minutes',
+          timestamp: new Date().toISOString()
+        },
         message: 'Matched with available general practitioners'
       });
     }
 
-    // Process primary matched doctors
     const matchedDoctors = querySnapshot.docs.map(doc => {
       const data = doc.data();
       return {
@@ -101,37 +120,31 @@ export default async function handler(
         specialization: data.specialization,
         rating: data.rating,
         experience: data.experience,
-        languages: data.languages || ['English'],
-        estimatedWaitTime: '1-5 minutes',
-        consultationFee: data.consultationFee,
-        availability: data.isAvailable || true,
-        imageUrl: data.imageUrl || ''
+        availability: true,
+        imageUrl: data.imageUrl || '',
+        consultationFee: data.consultationFee
       };
     });
 
-    // Calculate real-time availability and wait times
     const availabilityInfo = await calculateRealTimeAvailability(matchedDoctors);
 
     return res.status(200).json({ 
       matchedDoctors,
       availabilityInfo,
-      estimatedWaitTime: availabilityInfo.estimatedWaitTime
+      message: 'Successfully matched with specialists'
     });
 
   } catch (error) {
     console.error('Doctor matching error:', error);
-    // More detailed error response
     return res.status(500).json({ 
       error: 'Failed to match doctor',
-      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined,
-      timestamp: new Date().toISOString()
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
 }
 
 async function calculateRealTimeAvailability(doctors: Doctor[]) {
   try {
-    // Get current active consultations for these doctors
     const consultationsRef = collection(db, 'consultations');
     const activeConsultations = query(
       consultationsRef,
@@ -141,7 +154,6 @@ async function calculateRealTimeAvailability(doctors: Doctor[]) {
 
     const consultationsSnapshot = await getDocs(activeConsultations);
     
-    // Calculate wait times and availability
     const doctorLoads: { [key: string]: number } = {};
     consultationsSnapshot.forEach(doc => {
       const consultation = doc.data();
@@ -161,7 +173,7 @@ async function calculateRealTimeAvailability(doctors: Doctor[]) {
     console.error('Error calculating availability:', error);
     return {
       doctorLoads: {},
-      estimatedWaitTime: '5-10 minutes', // fallback estimate
+      estimatedWaitTime: '5-10 minutes',
       timestamp: new Date().toISOString()
     };
   }
