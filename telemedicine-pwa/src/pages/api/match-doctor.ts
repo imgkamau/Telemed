@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '../../config/firebase';
+import { adminDb } from '../../config/firebase-admin';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Doctor } from '@/types';
 
@@ -32,7 +32,7 @@ export default async function handler(
   }
 
   try {
-    if (!db) throw new Error('Database not initialized');
+    if (!adminDb) throw new Error('Database not initialized');
 
     const { specialty, symptoms = [] } = req.body as MatchDoctorRequest;
     console.log('Processing match request:', { 
@@ -47,13 +47,11 @@ export default async function handler(
       });
     }
 
-    const doctorsRef = collection(db, 'doctors');
-    const primaryQuery = query(
-      doctorsRef,
-      where('specialization', '==', specialty),
-      where('availability', '==', true),
-      limit(5)
-    );
+    const doctorsRef = adminDb.collection('doctors');
+    const primaryQuery = doctorsRef
+      .where('specialization', '==', specialty)
+      .where('availability', '==', true)
+      .limit(5);
 
     console.log('Executing primary query with:', {
       specialty,
@@ -64,7 +62,7 @@ export default async function handler(
       }
     });
 
-    const querySnapshot = await getDocs(primaryQuery);
+    const querySnapshot = await primaryQuery.get();
     console.log('Query results:', {
       size: querySnapshot.size,
       empty: querySnapshot.empty,
@@ -80,7 +78,7 @@ export default async function handler(
       queryResults?: any;
     } = {
       receivedSpecialty: specialty,
-      dbInitialized: !!db,
+      dbInitialized: !!adminDb,
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV
     };
@@ -99,14 +97,12 @@ export default async function handler(
     if (querySnapshot.empty) {
       console.log('No exact specialty match, trying fallback...');
       
-      const fallbackQuery = query(
-        doctorsRef,
-        where('specialization', '==', 'General Practice'),
-        where('availability', '==', true),
-        limit(3)
-      );
+      const fallbackQuery = doctorsRef
+        .where('specialization', '==', 'General Practice')
+        .where('availability', '==', true)
+        .limit(3);
 
-      const fallbackSnapshot = await getDocs(fallbackQuery);
+      const fallbackSnapshot = await fallbackQuery.get();
       console.log('Fallback query results:', {
         size: fallbackSnapshot.size,
         empty: fallbackSnapshot.empty,
@@ -202,15 +198,13 @@ export default async function handler(
 
 async function calculateRealTimeAvailability(doctors: Doctor[]) {
   try {
-    if (!db) throw new Error('Database not initialized');
-    const consultationsRef = collection(db, 'consultations');
-    const activeConsultations = query(
-      consultationsRef,
-      where('doctorId', 'in', doctors.map(d => d.id)),
-      where('status', 'in', ['active', 'waiting'])
-    );
+    if (!adminDb) throw new Error('Database not initialized');
+    const consultationsRef = adminDb.collection('consultations');
+    const activeConsultations = consultationsRef
+      .where('doctorId', 'in', doctors.map(d => d.id))
+      .where('status', 'in', ['active', 'waiting']);
 
-    const consultationsSnapshot = await getDocs(activeConsultations);
+    const consultationsSnapshot = await activeConsultations.get();
     
     const doctorLoads: { [key: string]: number } = {};
     consultationsSnapshot.forEach(doc => {
@@ -249,15 +243,13 @@ function calculateWaitTime(doctorLoads: { [key: string]: number }) {
 
 async function simpleFallbackMatching() {
   try {
-    if (!db) throw new Error('Database not initialized');
-    const doctorsRef = collection(db, 'doctors');
-    const simpleQuery = query(
-      doctorsRef,
+    if (!adminDb) throw new Error('Database not initialized');
+    const doctorsRef = adminDb.collection('doctors');
+    const simpleQuery = doctorsRef
       where('availability', '==', true),
-      limit(5)
-    );
+      limit(5);
 
-    const snapshot = await getDocs(simpleQuery);
+    const snapshot = await simpleQuery.get();
     return snapshot.docs.map(doc => {
       const data = doc.data();
       return {
