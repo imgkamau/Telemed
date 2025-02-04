@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { adminDb } from '../../config/firebase-admin';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Doctor } from '@/types';
 
 interface MatchDoctorRequest {
@@ -19,6 +18,29 @@ interface MatchDoctorResponse {
   message?: string;
 }
 
+// Rate limiting map
+const requestCounts = new Map<string, { count: number; timestamp: number }>();
+const RATE_LIMIT = 10; // requests
+const RATE_WINDOW = 60 * 1000; // 1 minute in milliseconds
+
+// Helper for input sanitization
+function sanitizeInput(input: string): string {
+  return input.trim().replace(/[^\w\s-]/g, '');
+}
+
+// Helper for data validation
+function validateAndSanitizeDoctor(doc: FirebaseFirestore.DocumentData): Doctor {
+  return {
+    id: doc.id,
+    name: doc.name?.trim() || 'Unknown Doctor',
+    specialization: doc.specialization?.trim() || 'General Practice',
+    availability: Boolean(doc.availability),
+    experience: typeof doc.experience === 'number' ? Math.max(0, doc.experience) : 0,
+    rating: typeof doc.rating === 'number' ? Math.min(5, Math.max(0, doc.rating)) : 0,
+    bio: doc.bio?.trim() || ''
+  };
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<MatchDoctorResponse | { 
@@ -27,18 +49,40 @@ export default async function handler(
     debug?: any;
   }>
 ) {
+  // Method validation
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Rate limiting
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const now = Date.now();
+  const clientRequests = requestCounts.get(String(clientIp));
+
+  if (clientRequests) {
+    if (now - clientRequests.timestamp < RATE_WINDOW && clientRequests.count >= RATE_LIMIT) {
+      return res.status(429).json({ 
+        error: 'Too many requests',
+        details: 'Please try again later'
+      });
+    }
+    if (now - clientRequests.timestamp >= RATE_WINDOW) {
+      clientRequests.count = 1;
+      clientRequests.timestamp = now;
+    } else {
+      clientRequests.count++;
+    }
+  } else {
+    requestCounts.set(String(clientIp), { count: 1, timestamp: now });
+  }
+
   try {
+    // Database validation
     if (!adminDb) throw new Error('Database not initialized');
 
-    const { specialty, symptoms = [] } = req.body as MatchDoctorRequest;
-    console.log('Processing match request:', { 
-      specialty, 
-      symptoms: symptoms.length ? symptoms : 'No symptoms provided'
-    });
+    // Input validation and sanitization
+    const { specialty: rawSpecialty, symptoms = [] } = req.body as MatchDoctorRequest;
+    const specialty = sanitizeInput(rawSpecialty);
 
     if (!specialty) {
       return res.status(400).json({ 
@@ -47,29 +91,38 @@ export default async function handler(
       });
     }
 
+    console.log('Processing match request:', { 
+      specialty, 
+      symptoms: symptoms.length ? symptoms : 'No symptoms provided'
+    });
+
+    // Query with timeout
     const doctorsRef = adminDb.collection('doctors');
     const primaryQuery = doctorsRef
       .where('specialization', '==', specialty)
       .where('availability', '==', true)
       .limit(5);
 
-    console.log('Executing primary query with:', {
-      specialty,
-      collection: 'doctors',
-      conditions: {
-        specialization: specialty,
-        availability: true
-      }
-    });
+    const queryPromise = primaryQuery.get();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout')), 10000)
+    );
 
-    const querySnapshot = await primaryQuery.get();
+    const querySnapshot = await Promise.race([queryPromise, timeoutPromise])
+      .catch(error => {
+        if (error.message === 'Query timeout') {
+          throw new Error('Service temporarily unavailable');
+        }
+        throw error;
+      }) as FirebaseFirestore.QuerySnapshot;
+
     console.log('Query results:', {
       size: querySnapshot.size,
       empty: querySnapshot.empty,
       docs: querySnapshot.docs.map(d => d.id)
     });
 
-    // Send debug info in response during development
+    // Debug info with type safety
     const debugInfo: {
       receivedSpecialty: string;
       dbInitialized: boolean;
@@ -80,10 +133,9 @@ export default async function handler(
       receivedSpecialty: specialty,
       dbInitialized: !!adminDb,
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV
+      environment: process.env.NODE_ENV || 'unknown'
     };
 
-    // Include query results in debug info
     debugInfo.queryResults = {
       totalDocs: querySnapshot.size,
       isEmpty: querySnapshot.empty,
@@ -125,7 +177,6 @@ export default async function handler(
           });
         }
         
-        // If even simple fallback fails, return no doctors found
         return res.status(200).json({ 
           matchedDoctors: [],
           availabilityInfo: {
@@ -137,18 +188,9 @@ export default async function handler(
         });
       }
 
-      const fallbackDoctors = fallbackSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name,
-          specialization: data.specialization,
-          availability: data.availability,
-          experience: data.experience,
-          rating: data.rating || 0,
-          bio: data.bio || ''
-        };
-      });
+      const fallbackDoctors = fallbackSnapshot.docs.map(doc => 
+        validateAndSanitizeDoctor({ id: doc.id, ...doc.data() })
+      );
 
       return res.status(200).json({ 
         matchedDoctors: fallbackDoctors,
@@ -161,18 +203,9 @@ export default async function handler(
       });
     }
 
-    const matchedDoctors = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        specialization: data.specialization,
-        availability: data.availability,
-        experience: data.experience,
-        rating: data.rating || 0,
-        bio: data.bio || ''
-      };
-    });
+    const matchedDoctors = querySnapshot.docs.map(doc => 
+      validateAndSanitizeDoctor({ id: doc.id, ...doc.data() })
+    );
 
     const availabilityInfo = await calculateRealTimeAvailability(matchedDoctors);
 
@@ -184,21 +217,42 @@ export default async function handler(
 
   } catch (error) {
     console.error('Doctor matching error:', error);
-    return res.status(500).json({ 
+    
+    // Enhanced error response
+    const errorResponse = {
       error: 'Failed to match doctor',
       details: error instanceof Error ? error.message : 'Unknown error',
-      debug: process.env.NODE_ENV === 'development' ? {
-        errorName: error instanceof Error ? error.name : 'Unknown',
-        errorStack: error instanceof Error ? error.stack : undefined,
-        timestamp: new Date().toISOString()
-      } : undefined
-    });
+      errorCode: error instanceof Error ? error.name : 'UNKNOWN_ERROR',
+      timestamp: new Date().toISOString()
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(500).json({
+        ...errorResponse,
+        debug: {
+          stack: error instanceof Error ? error.stack : undefined,
+          env: process.env.NODE_ENV
+        }
+      });
+    }
+
+    return res.status(500).json(errorResponse);
   }
 }
 
 async function calculateRealTimeAvailability(doctors: Doctor[]) {
   try {
     if (!adminDb) throw new Error('Database not initialized');
+    
+    // Handle empty doctors array
+    if (!doctors.length) {
+      return {
+        doctorLoads: {},
+        estimatedWaitTime: '1-5 minutes',
+        timestamp: new Date().toISOString()
+      };
+    }
+
     const consultationsRef = adminDb.collection('consultations');
     const activeConsultations = consultationsRef
       .where('doctorId', 'in', doctors.map(d => d.id))
@@ -207,12 +261,15 @@ async function calculateRealTimeAvailability(doctors: Doctor[]) {
     const consultationsSnapshot = await activeConsultations.get();
     
     const doctorLoads: { [key: string]: number } = {};
+    doctors.forEach(doctor => {
+      doctorLoads[doctor.id] = 0; // Initialize all doctors with 0 load
+    });
+
     consultationsSnapshot.forEach(doc => {
       const consultation = doc.data();
-      if (!doctorLoads[consultation.doctorId]) {
-        doctorLoads[consultation.doctorId] = 0;
+      if (doctorLoads[consultation.doctorId] !== undefined) {
+        doctorLoads[consultation.doctorId]++;
       }
-      doctorLoads[consultation.doctorId]++;
     });
 
     return {
@@ -232,8 +289,10 @@ async function calculateRealTimeAvailability(doctors: Doctor[]) {
 }
 
 function calculateWaitTime(doctorLoads: { [key: string]: number }) {
-  const averageLoad = Object.values(doctorLoads).reduce((sum, load) => sum + load, 0) / 
-                     Object.keys(doctorLoads).length || 0;
+  const loads = Object.values(doctorLoads);
+  if (!loads.length) return '1-5 minutes';
+
+  const averageLoad = loads.reduce((sum, load) => sum + load, 0) / loads.length;
   
   if (averageLoad === 0) return '1-5 minutes';
   if (averageLoad <= 2) return '5-10 minutes';
@@ -244,24 +303,16 @@ function calculateWaitTime(doctorLoads: { [key: string]: number }) {
 async function simpleFallbackMatching() {
   try {
     if (!adminDb) throw new Error('Database not initialized');
+    
     const doctorsRef = adminDb.collection('doctors');
     const simpleQuery = doctorsRef
-      where('availability', '==', true),
-      limit(5);
+      .where('availability', '==', true)
+      .limit(5);
 
     const snapshot = await simpleQuery.get();
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        specialization: data.specialization,
-        availability: data.availability,
-        experience: data.experience,
-        rating: data.rating || 0,
-        bio: data.bio || ''
-      };
-    });
+    return snapshot.docs.map(doc => 
+      validateAndSanitizeDoctor({ id: doc.id, ...doc.data() })
+    );
   } catch (error) {
     console.error('Simple fallback matching error:', error);
     return [];

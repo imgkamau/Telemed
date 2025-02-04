@@ -11,7 +11,10 @@ export interface User {
     specialization: string;
     availability: boolean;
     rating: number;
+    experience: number;  // Added this
+    bio: string;
     imageUrl?: string;
+
   }
   
   export interface Consultation {
