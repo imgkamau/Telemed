@@ -30,6 +30,7 @@ import { useRouter } from 'next/router';
 import { specialties } from '../../components/chat/InitialAssessment';
 import { useChat } from '../../contexts/ChatContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { User } from '@/types';
 
 export default function PreChatAssessment() {
   const theme = useTheme();
@@ -187,7 +188,6 @@ export default function PreChatAssessment() {
     if (!user) return;
     
     try {
-      // Store assessment data in context for AI chat
       const assessmentData = {
         type: patientType as 'self' | 'child' | 'other',
         age: patientAge ? parseInt(patientAge) : undefined,
@@ -195,7 +195,21 @@ export default function PreChatAssessment() {
         primarySymptom,
       };
 
+      // Store in context for AI chat
       setPatientInfo(assessmentData);
+      
+      // Create consultation request in Firestore
+      if (!db) throw new Error('Database not initialized');
+      const consultationRef = await addDoc(collection(db, 'consultations'), {
+        patientId: user.id,
+        patientContact: {
+          email: user.email,
+          phone: user.phoneNumber
+        },
+        patientInfo: assessmentData,
+        status: 'pending',
+        createdAt: new Date(),
+      });
       
       // Redirect to AI chat first
       router.push('/chat');

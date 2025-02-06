@@ -46,7 +46,10 @@ export interface PendingConsultation {
     age?: number;
     specialty: string;
     primarySymptom: string;
+    additionalSymptoms?: string[];
+    notes?: string;
   };
+  patientName?: string;
   status: 'pending' | 'active' | 'completed';
   createdAt: Date;
 } 

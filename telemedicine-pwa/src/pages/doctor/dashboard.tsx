@@ -35,6 +35,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { WebSocketService } from '../../services/WebSocketService';
 import { DoctorService } from '../../services/DoctorService';
+import { PendingConsultation } from '../../types/doctor';
+
 
 interface Appointment {
   id: string;
@@ -66,18 +68,6 @@ interface Consultation {
   status: string;
   scheduledTime: string;
   symptoms: string;
-}
-
-interface PendingConsultation {
-  id: string;
-  patientInfo: {
-    type: 'self' | 'child' | 'other';
-    age?: number;
-    specialty: string;
-    primarySymptom: string;
-  };
-  status: 'pending' | 'active' | 'completed';
-  createdAt: Date;
 }
 
 // Initialize services outside the component
@@ -128,7 +118,7 @@ export default function DoctorDashboard() {
     return () => {
       webSocketService.disconnect();
     };
-}, [user?.id]);
+  }, [user?.id]);
 
   const handleAvailabilityToggle = async () => {
     if (!user?.id || !doctorData) return;
@@ -167,7 +157,7 @@ export default function DoctorDashboard() {
 
   const acceptConsultation = async (consultationId: string) => {
     if (!user?.id) return;
-    
+
     try {
       if (!db) throw new Error('Database not initialized');
       await updateDoc(doc(db, 'consultations', consultationId), {
@@ -297,16 +287,16 @@ export default function DoctorDashboard() {
             <Box sx={{ mt: 2 }}>
               <Typography variant="body1">
                 Pending Appointments: {
-                  appointments.filter(apt => 
-                    apt.status === 'pending' && 
+                  appointments.filter(apt =>
+                    apt.status === 'pending' &&
                     new Date(apt.dateTime).toDateString() === new Date().toDateString()
                   ).length
                 }
               </Typography>
               <Typography variant="body1">
                 Completed Today: {
-                  appointments.filter(apt => 
-                    apt.status === 'completed' && 
+                  appointments.filter(apt =>
+                    apt.status === 'completed' &&
                     new Date(apt.dateTime).toDateString() === new Date().toDateString()
                   ).length
                 }
@@ -348,7 +338,7 @@ export default function DoctorDashboard() {
                             label={appointment.status}
                             color={
                               appointment.status === 'completed' ? 'success' :
-                              appointment.status === 'cancelled' ? 'error' : 'warning'
+                                appointment.status === 'cancelled' ? 'error' : 'warning'
                             }
                           />
                         </TableCell>
@@ -385,25 +375,69 @@ export default function DoctorDashboard() {
                       </Typography>
                       {consultation.patientInfo ? (
                         <>
-                          <Typography>
-                            Patient Type: {consultation.patientInfo.type}
-                            {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
-                          </Typography>
-                          <Typography>
-                            Concern: {consultation.patientInfo.primarySymptom}
-                          </Typography>
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle1" color="primary">
+                              Patient Details
+                            </Typography>
+                            <Typography>
+                              Type: {consultation.patientInfo.type}
+                              {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle1" color="primary">
+                              Medical Information
+                            </Typography>
+                            <Typography>
+                              Specialty Requested: {consultation.patientInfo.specialty}
+                            </Typography>
+                            <Typography>
+                              Primary Symptom: {consultation.patientInfo.primarySymptom}
+                            </Typography>
+                            {consultation.patientInfo.additionalSymptoms && (
+                              <>
+                                <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                                  Additional Symptoms:
+                                </Typography>
+                                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                                  {consultation.patientInfo.additionalSymptoms.map((symptom, index) => (
+                                    <li key={index}>
+                                      <Typography>{symptom}</Typography>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                            {consultation.patientInfo.notes && (
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="subtitle2">
+                                  Additional Notes:
+                                </Typography>
+                                <Typography sx={{ fontStyle: 'italic' }}>
+                                  {consultation.patientInfo.notes}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+
+                          <Box sx={{ mb: 1 }}>
+                            <Typography color="textSecondary">
+                              Requested: {new Date(consultation.createdAt).toLocaleString()}
+                            </Typography>
+                          </Box>
                         </>
                       ) : (
-                        <Typography>Patient information not available</Typography>
+                        <Typography color="error">
+                          Patient information not available
+                        </Typography>
                       )}
-                      <Typography color="textSecondary" gutterBottom>
-                        Requested: {new Date(consultation.createdAt).toLocaleString()}
-                      </Typography>
                       <Button
                         variant="contained"
                         color="primary"
                         fullWidth
                         onClick={() => acceptConsultation(consultation.id)}
+                        sx={{ mt: 2 }}
                       >
                         Accept Consultation
                       </Button>
