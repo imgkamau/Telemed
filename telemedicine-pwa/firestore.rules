@@ -69,5 +69,32 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
+
+    // Patient profile rules
+    match /patients/{patientId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == patientId;
+      allow update: if request.auth != null && 
+        request.auth.uid == patientId;
+    }
+
+    // Terms acceptance rules
+    match /termsAcceptance/{userId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == userId;
+      allow write: if request.auth != null && 
+        request.auth.uid == userId;
+    }
+
+    // Pre-assessment rules
+    match /preAssessments/{assessmentId} {
+      allow read: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.patientId;
+    }
   }
 }
