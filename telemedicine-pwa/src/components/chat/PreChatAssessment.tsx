@@ -188,13 +188,25 @@ export default function PreChatAssessment() {
     if (!user) return;
     
     try {
-      const assessmentData = {
+      // For context (uses undefined)
+      const contextData = {
         type: patientType as 'self' | 'child' | 'other',
         age: patientType === 'self' ? undefined : patientAge ? parseInt(patientAge) : undefined,
         specialty: selectedSpecialty,
         primarySymptom,
       };
 
+      // For Firestore (uses null)
+      const firestoreData = {
+        type: patientType as 'self' | 'child' | 'other',
+        age: patientType === 'self' ? null : patientAge ? parseInt(patientAge) : null,
+        specialty: selectedSpecialty,
+        primarySymptom,
+      };
+
+      // Store in context for AI chat
+      setPatientInfo(contextData);
+      
       // Create consultation request in Firestore
       if (!db) throw new Error('Database not initialized');
       const consultationRef = await addDoc(collection(db, 'consultations'), {
@@ -203,19 +215,16 @@ export default function PreChatAssessment() {
           email: user.email,
           phone: user.phoneNumber
         },
-        patientInfo: assessmentData,
+        patientInfo: firestoreData,
         status: 'pending',
         createdAt: new Date(),
         assessment: {
           specialty: selectedSpecialty,
-          urgency: 'medium', // Default urgency
+          urgency: 'medium',
           symptoms: [primarySymptom],
           recommendConsultation: true
         }
       });
-      
-      // Store in context for AI chat
-      setPatientInfo(assessmentData);
       
       // Redirect to AI chat
       router.push('/chat');
