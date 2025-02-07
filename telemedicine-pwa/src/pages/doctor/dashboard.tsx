@@ -375,62 +375,25 @@ export default function DoctorDashboard() {
                       </Typography>
                       {consultation.patientInfo ? (
                         <>
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle1" color="primary">
-                              Patient Details
-                            </Typography>
-                            <Typography>
-                              Type: {consultation.patientInfo.type}
-                              {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
-                            </Typography>
-                          </Box>
-
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle1" color="primary">
-                              Medical Information
-                            </Typography>
-                            <Typography>
-                              Specialty Requested: {consultation.patientInfo.specialty}
-                            </Typography>
-                            <Typography>
-                              Primary Symptom: {consultation.patientInfo.primarySymptom}
-                            </Typography>
-                            {consultation.patientInfo.additionalSymptoms && (
-                              <>
-                                <Typography variant="subtitle2" sx={{ mt: 1 }}>
-                                  Additional Symptoms:
-                                </Typography>
-                                <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
-                                  {consultation.patientInfo.additionalSymptoms.map((symptom, index) => (
-                                    <li key={index}>
-                                      <Typography>{symptom}</Typography>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </>
-                            )}
-                            {consultation.patientInfo.notes && (
-                              <Box sx={{ mt: 1 }}>
-                                <Typography variant="subtitle2">
-                                  Additional Notes:
-                                </Typography>
-                                <Typography sx={{ fontStyle: 'italic' }}>
-                                  {consultation.patientInfo.notes}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-
-                          <Box sx={{ mb: 1 }}>
-                            <Typography color="textSecondary">
-                              Requested: {new Date(consultation.createdAt).toLocaleString()}
-                            </Typography>
-                          </Box>
+                          <Typography>
+                            <strong>Patient Type:</strong> {consultation.patientInfo.type}
+                            {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
+                          </Typography>
+                          <Typography>
+                            <strong>Specialty:</strong> {consultation.patientInfo.specialty}
+                          </Typography>
+                          <Typography>
+                            <strong>Primary Concern:</strong> {consultation.patientInfo.primarySymptom}
+                          </Typography>
+                          <Typography>
+                            <strong>Contact:</strong> {consultation.patientContact?.email}
+                          </Typography>
+                          <Typography color="textSecondary" gutterBottom>
+                            Requested: {new Date(consultation.createdAt).toLocaleString()}
+                          </Typography>
                         </>
                       ) : (
-                        <Typography color="error">
-                          Patient information not available
-                        </Typography>
+                        <Typography color="error">Patient information not available</Typography>
                       )}
                       <Button
                         variant="contained"

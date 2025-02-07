@@ -215,7 +215,13 @@ export default function PreChatAssessment() {
           email: user.email,
           phone: user.phoneNumber
         },
-        patientInfo: firestoreData,
+        patientInfo: {
+          type: patientType as 'self' | 'child' | 'other',
+          age: patientType === 'self' ? null : patientAge ? parseInt(patientAge) : null,
+          specialty: selectedSpecialty,
+          primarySymptom: primarySymptom,
+          additionalSymptoms: [], // Add if you have this data
+        },
         status: 'pending',
         createdAt: new Date(),
         assessment: {
@@ -223,7 +229,13 @@ export default function PreChatAssessment() {
           urgency: 'medium',
           symptoms: [primarySymptom],
           recommendConsultation: true
-        }
+        },
+        // Add these fields to match your Consultation interface
+        doctorId: '', // Will be set when a doctor accepts
+        messages: [],
+        prescription: null,
+        startTime: new Date(),
+        estimatedWaitTime: '5-10 minutes'
       });
       
       // Redirect to AI chat
