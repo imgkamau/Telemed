@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '../../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, DocumentReference } from 'firebase/firestore';
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,10 +19,15 @@ export default async function handler(
       doctorId,
       patientId,
       assessment,
-      status: 'waiting',
+      status: 'pending',
       createdAt: serverTimestamp(),
       messages: [],
       prescription: null
+    }) as DocumentReference;
+
+    // Now update with roomId
+    await updateDoc(consultation, {
+      roomId: consultation.id
     });
 
     // Send notification to doctor

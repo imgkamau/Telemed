@@ -157,22 +157,23 @@ export default function ChatInterface() {
 
         if (responseData.matchedDoctors && responseData.matchedDoctors.length > 0) {
           // Create consultation
-          if (!db) throw new Error('Database not initialized');
-          const consultationRef = await addDoc(collection(db, 'consultations'), {
-            patientId: user?.id,
-            doctorId: responseData.matchedDoctors[0].id,
-            status: 'pending',
-            assessment: assessment,
-            createdAt: new Date()
+          const response = await fetch('/api/create-consultation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              doctorId: responseData.matchedDoctors[0].id,
+              patientId: user?.id,
+              assessment: assessment
+            })
           });
 
-          // Then update it with its own ID as the roomId
-          await updateDoc(consultationRef, {
-            roomId: consultationRef.id
-          });
-
-          setConsultationId(consultationRef.id);
-          router.push(`/consultation/${consultationRef.id}`);
+          const data = await response.json();
+          if (data.consultationId) {
+            setConsultationId(data.consultationId);
+            router.push(`/consultation/${data.consultationId}`);
+          } else {
+            throw new Error('Failed to create consultation');
+          }
         } else {
           setMessages(prev => [...prev, {
             role: 'assistant',

@@ -21,10 +21,12 @@ export default async function handler(
       notes 
     } = req.body;
 
+    if (!db) throw new Error('Database not initialized');
     // Check doctor availability
     const availabilityRef = doc(db, 'doctorAvailability', doctorId);
     const availabilityDoc = await getDoc(availabilityRef);
     const availability = availabilityDoc.data();
+
 
     // Validate selected date against availability
     if (!isDateAvailable(scheduledDate, availability)) {

@@ -18,10 +18,12 @@ export default async function handler(
 }
 
 async function getDoctorAvailability(req: NextApiRequest, res: NextApiResponse) {
+  if (!db) throw new Error('Database not initialized');
   try {
     const { doctorId } = req.query;
     const availabilityRef = doc(db, 'doctorAvailability', doctorId as string);
     const availabilityDoc = await getDoc(availabilityRef);
+
 
     if (!availabilityDoc.exists()) {
       return res.status(404).json({ error: 'Availability not found' });
@@ -34,6 +36,7 @@ async function getDoctorAvailability(req: NextApiRequest, res: NextApiResponse) 
 }
 
 async function updateDoctorAvailability(req: NextApiRequest, res: NextApiResponse) {
+  if (!db) throw new Error('Database not initialized');
   try {
     const { doctorId, availability } = req.body;
     const availabilityRef = doc(db, 'doctorAvailability', doctorId);
