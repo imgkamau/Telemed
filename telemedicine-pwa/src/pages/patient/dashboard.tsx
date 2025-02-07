@@ -15,10 +15,12 @@ import {
   ListItemText,
   Tab,
   Tabs,
+  Button,
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import { PatientService } from '../../services/PatientService';
 import { Patient } from '../../types/patient';
+import { useRouter } from 'next/router';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -52,6 +54,8 @@ export default function PatientDashboard() {
   const [consultations, setConsultations] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
 
+  const router = useRouter();
+
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) return;
@@ -77,6 +81,10 @@ export default function PatientDashboard() {
     setTabValue(newValue);
   };
 
+  const startNewConsultation = () => {
+    router.push('/pre-assessment');
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
@@ -98,6 +106,20 @@ export default function PatientDashboard() {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              onClick={startNewConsultation}
+              sx={{ minWidth: 200 }}
+            >
+              Start New Consultation
+            </Button>
+          </Paper>
+        </Grid>
+
         {/* Patient Profile Summary */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3 }}>

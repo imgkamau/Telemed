@@ -93,13 +93,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleUserRedirect = (userData: User) => {
+    if (userData.role === 'patient') {
+      router.push('/patient/dashboard');
+    } else if (userData.role === 'doctor') {
+      router.push('/doctor/dashboard');
+    } else if (userData.role === 'admin') {
+      router.push('/admin/dashboard');
+    }
+  };
+
   const verifyCode = async (confirmationResult: ConfirmationResult, code: string) => {
     try {
       const result = await confirmationResult.confirm(code);
       const userData = await createUserData(result.user);
-
       setUser(userData);
-      router.push('/chat');
+      handleUserRedirect(userData);
     } catch (error) {
       console.error('Error confirming OTP:', error);
       setError('Invalid verification code');
@@ -125,9 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!auth) throw new Error('Auth not initialized');
       const result = await signInWithEmailAndPassword(auth, email, password);
       const userData = await createUserData(result.user);
-      
-
       setUser(userData);
+      handleUserRedirect(userData);
     } catch (error: any) {
       console.error('Email sign in error:', error);
       throw error;
@@ -154,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await signInWithPopup(auth, provider);
       const userData = await createUserData(result.user);
       setUser(userData);
-
+      handleUserRedirect(userData);
     } catch (error: any) {
       console.error('Google sign in error:', error);
       throw error;
