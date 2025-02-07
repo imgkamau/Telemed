@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Typography, Paper, CircularProgress, Container } from '@mui/material';
+import { Box, Typography, Paper, CircularProgress, Container, Button } from '@mui/material';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -127,10 +127,24 @@ export default function ConsultationRoom() {
               </>
             )}
             {!showVideo && (
-              <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+              <Box 
+                display="flex" 
+                flexDirection="column"
+                justifyContent="center" 
+                alignItems="center" 
+                height="100%"
+                gap={2}
+              >
                 <Typography variant="h6">
                   Please accept the terms and conditions to join the consultation
                 </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleJoinConsultation}
+                >
+                  View and Accept Terms & Conditions
+                </Button>
               </Box>
             )}
           </Paper>
