@@ -93,11 +93,14 @@ export default function PatientSignup() {
     return true;
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      // 1. First create Firebase Auth account
+      if (!formData.password) {
+        setError('Password is required');
+        return;
+      }
       const { user } = await signup(formData.email, formData.password);
       
       // 2. Then save additional user data to Firestore
@@ -106,17 +109,14 @@ export default function PatientSignup() {
         ...formData,
         id: user.uid,
         role: 'patient',
-        createdAt: new Date()
       });
-
-      // 3. Redirect to login
       router.push('/auth/login');
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      setError('Failed to create an account');
+      setError(error.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -220,6 +220,16 @@ export default function PatientSignup() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                type="password"
+                label="Password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
                 required
               />
             </Grid>
