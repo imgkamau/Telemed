@@ -22,6 +22,7 @@ interface NotificationContextType {
   notifyDoctor: (consultation: Consultation) => Promise<void>;
   consultationStatus: 'waiting' | 'accepted' | 'none';
   consultationId: string | null;
+  setConsultationId: (id: string | null) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -63,15 +64,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         collection(db, 'consultations'),
         where('patientId', '==', user.id),
         where('status', 'in', ['pending', 'active'])
-
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const consultation = snapshot.docs[0]?.data();
         if (consultation) {
           setConsultationStatus(consultation.status === 'pending' ? 'waiting' : 'accepted');
+          setConsultationId(snapshot.docs[0].id);
         } else {
           setConsultationStatus('none');
+          setConsultationId(null);
         }
       });
 
@@ -99,7 +101,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         pendingConsultations, 
         notifyDoctor,
         consultationStatus,
-        consultationId 
+        consultationId,
+        setConsultationId 
       }}
     >
       {children}

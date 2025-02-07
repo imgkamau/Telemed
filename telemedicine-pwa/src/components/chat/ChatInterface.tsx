@@ -42,7 +42,7 @@ export default function ChatInterface() {
   const router = useRouter();
   const [showPayment, setShowPayment] = useState(false);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
-  const { consultationStatus, consultationId } = useNotification();
+  const { consultationStatus, consultationId, setConsultationId } = useNotification();
 
   useEffect(() => {
     if (consultationStatus === 'accepted') {
@@ -171,6 +171,7 @@ export default function ChatInterface() {
             roomId: consultationRef.id
           });
 
+          setConsultationId(consultationRef.id);
           router.push(`/consultation/${consultationRef.id}`);
         } else {
           setMessages(prev => [...prev, {
