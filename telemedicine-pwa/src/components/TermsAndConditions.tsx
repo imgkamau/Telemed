@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,6 +10,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 
 interface TermsAndConditionsProps {
@@ -19,6 +21,8 @@ interface TermsAndConditionsProps {
 }
 
 export default function TermsAndConditions({ open, onAccept, onDecline }: TermsAndConditionsProps) {
+  const [accepted, setAccepted] = useState(false);
+
   return (
     <Dialog
       open={open}
@@ -94,16 +98,31 @@ export default function TermsAndConditions({ open, onAccept, onDecline }: TermsA
           </List>
 
           <Typography variant="body1" sx={{ mt: 2 }} color="error">
-            By clicking "I Accept", you acknowledge that you have read, understood, and agree to these terms and conditions.
+            By clicking "Accept", you acknowledge that you have read, understood, and agree to these terms and conditions.
           </Typography>
+        </Box>
+        <Box sx={{ mt: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+              />
+            }
+            label="I have read and agree to the terms and conditions"
+          />
         </Box>
       </DialogContent>
       <DialogActions>
         <Button onClick={onDecline} color="error">
           Decline
         </Button>
-        <Button onClick={onAccept} variant="contained" color="primary">
-          I Accept
+        <Button 
+          onClick={onAccept} 
+          variant="contained" 
+          disabled={!accepted}
+        >
+          Accept
         </Button>
       </DialogActions>
     </Dialog>
