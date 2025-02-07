@@ -21,6 +21,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PatientService } from '../../services/PatientService';
 import { Patient } from '../../types/patient';
 import { useRouter } from 'next/router';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -53,6 +55,7 @@ export default function PatientDashboard() {
   const [patientData, setPatientData] = useState<Patient | null>(null);
   const [consultations, setConsultations] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -81,8 +84,34 @@ export default function PatientDashboard() {
     setTabValue(newValue);
   };
 
-  const startNewConsultation = () => {
-    router.push('/pre-assessment');
+  const handleStartConsultation = async () => {
+    try {
+      // Check for active consultations
+      if (!db) throw new Error('Database not initialized');
+      const activeConsultations = await getDocs(     
+        query(
+          collection(db, 'consultations'),
+          where('patientId', '==', user?.id),
+          where('status', '==', 'active')
+        )
+      );
+
+      if (!activeConsultations.empty) {
+        // Either redirect to active consultation
+        const activeConsultation = activeConsultations.docs[0];
+        router.push(`/consultation/${activeConsultation.id}`);
+        
+        // Or show warning message
+        setError('You have an active consultation. Please complete or end it before starting a new one.');
+        return;
+      }
+
+      // If no active consultations, proceed to pre-assessment
+      router.push('/pre-assessment');
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to check active consultations');
+    }
   };
 
   if (loading) {
@@ -112,7 +141,7 @@ export default function PatientDashboard() {
               variant="contained"
               color="primary"
               size="large"
-              onClick={startNewConsultation}
+              onClick={handleStartConsultation}
               sx={{ minWidth: 200 }}
             >
               Start New Consultation
@@ -259,4 +288,4 @@ export default function PatientDashboard() {
       </Grid>
     </Container>
   );
-} 
+}

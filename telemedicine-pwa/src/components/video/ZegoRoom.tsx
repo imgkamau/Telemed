@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 interface ZegoRoomProps {
   roomId: string;
@@ -24,10 +26,18 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
     }
   };
 
-  const handleLeaveRoom = useCallback(() => {
+  const handleLeaveRoom = useCallback(async () => {
     setIsLeaving(true);
     if (zegoRef.current) {
       try {
+        // Update consultation status
+        if (!db) throw new Error('Database not initialized');
+        const consultationRef = doc(db, 'consultations', roomId);
+        await updateDoc(consultationRef, {
+          status: 'completed',
+          endTime: new Date()
+        });
+
         zegoRef.current.destroy();
         zegoRef.current = null;
       } catch (e) {
@@ -35,7 +45,7 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
       }
     }
     cleanupMediaDevices();
-  }, []);
+  }, [roomId]);
 
   const initZego = useCallback(async () => {
     try {
