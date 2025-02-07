@@ -29,6 +29,8 @@ export default function ConsultationRoom() {
     checkTermsAcceptance
   } = useTermsAcceptance(user?.id || '');
 
+  const isPatient = user?.role === 'patient';
+
   useEffect(() => {
     if (!id) return;
 
@@ -71,6 +73,62 @@ export default function ConsultationRoom() {
     router.push('/patient/dashboard');
   };
 
+  const renderVideoOrTerms = () => {
+    if (!showVideo) {
+      if (isPatient) {
+        return (
+          <Box 
+            display="flex" 
+            flexDirection="column"
+            justifyContent="center" 
+            alignItems="center" 
+            height="100%"
+            gap={2}
+          >
+            <Typography variant="h6">
+              Please accept the terms and conditions to join the consultation
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleJoinConsultation}
+            >
+              View and Accept Terms & Conditions
+            </Button>
+          </Box>
+        );
+      } else {
+        // For doctors, directly show join button
+        return (
+          <Box 
+            display="flex" 
+            flexDirection="column"
+            justifyContent="center" 
+            alignItems="center" 
+            height="100%"
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setShowVideo(true)}
+            >
+              Join Consultation
+            </Button>
+          </Box>
+        );
+      }
+    }
+
+    return (
+      <ZegoRoom
+        roomId={id as string}
+        userId={user?.id || ''}
+        userName={user?.email || user?.phoneNumber || ''}
+        role={isPatient ? 'Host' : 'Cohost'}
+      />
+    );
+  };
+
   if (loading) {
     return (
       <Container maxWidth="sm">
@@ -108,54 +166,19 @@ export default function ConsultationRoom() {
             </Typography>
           </Paper>
 
-          {/* Video consultation interface */}
           <Paper elevation={3} sx={{ p: 3, minHeight: '70vh' }}>
-            {user && id && showVideo && (
-              <>
-                <ZegoRoom
-                  roomId={id as string}
-                  userId={user.id}
-                  userName={user.email || user.phoneNumber || 'Doctor'}
-                  role="Host"
-                />
-                <ZegoRoom
-                  roomId={id as string}
-                  userId={user.id}
-                  userName={user.email || user.phoneNumber || 'Patient'}
-                  role="Cohost"
-                />
-              </>
-            )}
-            {!showVideo && (
-              <Box 
-                display="flex" 
-                flexDirection="column"
-                justifyContent="center" 
-                alignItems="center" 
-                height="100%"
-                gap={2}
-              >
-                <Typography variant="h6">
-                  Please accept the terms and conditions to join the consultation
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleJoinConsultation}
-                >
-                  View and Accept Terms & Conditions
-                </Button>
-              </Box>
-            )}
+            {renderVideoOrTerms()}
           </Paper>
         </Box>
       </Container>
 
-      <TermsAndConditions
-        open={showTerms}
-        onAccept={handleTermsAccepted}
-        onDecline={handleTermsDeclined}
-      />
+      {isPatient && (
+        <TermsAndConditions
+          open={showTerms}
+          onAccept={handleTermsAccepted}
+          onDecline={handleTermsDeclined}
+        />
+      )}
     </>
   );
 } 
