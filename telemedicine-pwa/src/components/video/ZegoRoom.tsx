@@ -5,9 +5,10 @@ interface ZegoRoomProps {
   roomId: string;
   userId: string;
   userName: string;
+  role?: 'Host' | 'Cohost';
 }
 
-function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
+function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const zegoRef = useRef<any>(null);
@@ -48,27 +49,11 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
       containerRef.current.style.left = '0';
       containerRef.current.style.zIndex = '1000';
 
-      // Test audio devices
-      const audioContext = new AudioContext();
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = mediaStream;
-      const source = audioContext.createMediaStreamSource(mediaStream);
-      const analyser = audioContext.createAnalyser();
-      source.connect(analyser);
-      
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
-      const audioDetected = dataArray.some(value => value > 0);
-      
-      if (audioDetected) {
-        console.log('Audio input detected and working');
-      } else {
-        console.warn('No audio input detected');
-      }
-
       const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID!);
       const serverSecret = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET!;
       
+      console.log('Joining room with:', { roomId, userId, userName, role });
+
       const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
         appID,
         serverSecret,
@@ -85,7 +70,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
         scenario: {
           mode: ZegoUIKitPrebuilt.OneONoneCall,
           config: {
-            role: ZegoUIKitPrebuilt.Host,
+            role: role === 'Host' ? ZegoUIKitPrebuilt.Host : ZegoUIKitPrebuilt.Cohost,
           },
         },
         onLeaveRoom: () => {
@@ -103,13 +88,16 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
         showTextChat: true,
         maxUsers: 2,
         layout: "Auto",
-        showScreenSharingButton: false
+        showScreenSharingButton: false,
+        videoResolutionDefault: window.innerWidth < 768 ? 
+          ZegoUIKitPrebuilt.VideoResolution_360P : 
+          ZegoUIKitPrebuilt.VideoResolution_720P,
       });
     } catch (error) {
       console.error('Error initializing Zego:', error);
       setError(error instanceof Error ? error.message : 'Failed to initialize video call');
     }
-  }, [roomId, userId, userName]);
+  }, [roomId, userId, userName, role, isLeaving, handleLeaveRoom]);
 
   useEffect(() => {
     let mounted = true;

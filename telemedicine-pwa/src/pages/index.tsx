@@ -39,14 +39,20 @@ export default function LandingPage() {
                   Get instant medical consultation with qualified doctors
                 </Typography>
               </CardContent>
-              <CardActions>
+              <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
                 <Button 
                   fullWidth 
-                  variant="contained" 
-                  size="large"
+                  variant="contained"
                   onClick={() => router.push('/auth/login')}
                 >
-                  Continue as Patient
+                  Login as Patient
+                </Button>
+                <Button 
+                  fullWidth 
+                  variant="outlined"
+                  onClick={() => router.push('/auth/patient-signup')}
+                >
+                  Register as Patient
                 </Button>
               </CardActions>
             </Card>
@@ -68,7 +74,7 @@ export default function LandingPage() {
               <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
                 <Button 
                   fullWidth 
-                  variant="contained" 
+                  variant="contained"
                   onClick={() => router.push('/doctor/login')}
                 >
                   Login as Doctor

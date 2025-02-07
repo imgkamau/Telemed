@@ -1,0 +1,240 @@
+import { useState, useEffect } from 'react';
+import {
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  Tab,
+  Tabs,
+} from '@mui/material';
+import { useAuth } from '../../contexts/AuthContext';
+import { PatientService } from '../../services/PatientService';
+import { Patient } from '../../types/patient';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+const patientService = new PatientService();
+
+export default function PatientDashboard() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [patientData, setPatientData] = useState<Patient | null>(null);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [tabValue, setTabValue] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const patient = await patientService.getPatient(user.id);
+        const consultationHistory = await patientService.getPatientConsultations(user.id);
+        
+        setPatientData(patient);
+        setConsultations(consultationHistory);
+      } catch (error) {
+        console.error('Error fetching patient data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!patientData) {
+    return (
+      <Container>
+        <Typography variant="h6" color="error">
+          Patient profile not found. Please complete registration.
+        </Typography>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Grid container spacing={3}>
+        {/* Patient Profile Summary */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Profile Summary
+            </Typography>
+            <List>
+              <ListItem>
+                <ListItemText 
+                  primary="Name" 
+                  secondary={patientData.fullName} 
+                />
+              </ListItem>
+              <Divider />
+              <ListItem>
+                <ListItemText 
+                  primary="ID Number" 
+                  secondary={patientData.idNumber} 
+                />
+              </ListItem>
+              <Divider />
+              <ListItem>
+                <ListItemText 
+                  primary="Date of Birth" 
+                  secondary={new Date(patientData.dateOfBirth).toLocaleDateString()} 
+                />
+              </ListItem>
+              <Divider />
+              <ListItem>
+                <ListItemText 
+                  primary="Contact" 
+                  secondary={`${patientData.phoneNumber} | ${patientData.email}`} 
+                />
+              </ListItem>
+            </List>
+          </Paper>
+        </Grid>
+
+        {/* Main Content Area */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ width: '100%' }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              indicatorColor="primary"
+              textColor="primary"
+            >
+              <Tab label="Consultation History" />
+              <Tab label="Prescriptions" />
+              <Tab label="Medical Records" />
+            </Tabs>
+
+            {/* Consultation History */}
+            <TabPanel value={tabValue} index={0}>
+              <Grid container spacing={2}>
+                {consultations.map((consultation) => (
+                  <Grid item xs={12} key={consultation.id}>
+                    <Card>
+                      <CardContent>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="h6">
+                            {consultation.assessment?.specialty || 'General Consultation'}
+                          </Typography>
+                          <Chip 
+                            label={consultation.status}
+                            color={
+                              consultation.status === 'completed' ? 'success' :
+                              consultation.status === 'active' ? 'primary' : 'default'
+                            }
+                          />
+                        </Box>
+                        <Typography color="textSecondary" gutterBottom>
+                          {new Date(consultation.createdAt).toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2">
+                          Primary Concern: {consultation.patientInfo?.primarySymptom}
+                        </Typography>
+                        {consultation.doctorId && (
+                          <Typography variant="body2">
+                            Doctor: Dr. {consultation.doctorName || 'Not assigned'}
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+                {consultations.length === 0 && (
+                  <Grid item xs={12}>
+                    <Typography color="textSecondary" align="center">
+                      No consultations yet
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </TabPanel>
+
+            {/* Prescriptions */}
+            <TabPanel value={tabValue} index={1}>
+              <Grid container spacing={2}>
+                {consultations
+                  .filter(c => c.prescription)
+                  .map((consultation) => (
+                    <Grid item xs={12} key={consultation.id}>
+                      <Card>
+                        <CardContent>
+                          <Typography variant="h6">
+                            Prescription - {new Date(consultation.createdAt).toLocaleDateString()}
+                          </Typography>
+                          <Typography color="textSecondary" gutterBottom>
+                            Dr. {consultation.doctorName || 'Unknown'}
+                          </Typography>
+                          <Typography variant="body2" component="pre">
+                            {consultation.prescription}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                {!consultations.some(c => c.prescription) && (
+                  <Grid item xs={12}>
+                    <Typography color="textSecondary" align="center">
+                      No prescriptions yet
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </TabPanel>
+
+            {/* Medical Records */}
+            <TabPanel value={tabValue} index={2}>
+              <Typography variant="body1" color="textSecondary" align="center">
+                Medical records will be available after your first consultation
+              </Typography>
+            </TabPanel>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Container>
+  );
+} 

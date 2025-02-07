@@ -25,7 +25,11 @@ import {
   Card,
   CardContent,
   Tabs,
-  Tab
+  Tab,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
@@ -36,6 +40,9 @@ import { useRouter } from 'next/router';
 import { WebSocketService } from '../../services/WebSocketService';
 import { DoctorService } from '../../services/DoctorService';
 import { PendingConsultation } from '../../types/doctor';
+import { PatientService } from '../../services/PatientService';
+import { Patient } from '../../types/patient';
+import CloseIcon from '@mui/icons-material/Close';
 
 
 interface Appointment {
@@ -73,6 +80,7 @@ interface Consultation {
 // Initialize services outside the component
 const webSocketService = new WebSocketService('wss://weblogger1029353476-api.coolzcloud.com/log');
 const doctorService = new DoctorService();
+const patientService = new PatientService();
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
@@ -88,6 +96,8 @@ export default function DoctorDashboard() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [tabValue, setTabValue] = useState(0);
   const [pendingConsultations, setPendingConsultations] = useState<PendingConsultation[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -203,6 +213,16 @@ export default function DoctorDashboard() {
       );
     } catch (error) {
       console.error('Error rejecting consultation:', error);
+    }
+  };
+
+  const handleViewPatientDetails = async (patientId: string) => {
+    try {
+      const patientData = await patientService.getPatientById(patientId);
+      setSelectedPatient(patientData);
+      setShowPatientDetails(true);
+    } catch (error) {
+      console.error('Error fetching patient details:', error);
     }
   };
 
@@ -433,6 +453,14 @@ export default function DoctorDashboard() {
                       )}
                       <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
                         <Button
+                          variant="outlined"
+                          color="info"
+                          fullWidth
+                          onClick={() => handleViewPatientDetails(consultation.patientId)}
+                        >
+                          View Patient Details
+                        </Button>
+                        <Button
                           variant="contained"
                           color="primary"
                           fullWidth
@@ -500,6 +528,88 @@ export default function DoctorDashboard() {
             Save
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Patient Details Dialog */}
+      <Dialog
+        open={showPatientDetails}
+        onClose={() => setShowPatientDetails(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Patient Details
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowPatientDetails(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedPatient && (
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>Personal Information</Typography>
+                <List>
+                  <ListItem>
+                    <ListItemText primary="Full Name" secondary={selectedPatient.fullName} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="ID Number" secondary={selectedPatient.idNumber} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Date of Birth" 
+                      secondary={new Date(selectedPatient.dateOfBirth).toLocaleDateString()} 
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="Gender" secondary={selectedPatient.gender} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="Marital Status" secondary={selectedPatient.maritalStatus} />
+                  </ListItem>
+                </List>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>Contact Information</Typography>
+                <List>
+                  <ListItem>
+                    <ListItemText primary="Phone" secondary={selectedPatient.phoneNumber} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="Email" secondary={selectedPatient.email} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="Address" secondary={selectedPatient.address} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText primary="Location" secondary={selectedPatient.location} />
+                  </ListItem>
+                </List>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>Emergency Contact</Typography>
+                <List>
+                  <ListItem>
+                    <ListItemText 
+                      primary={selectedPatient.emergencyContact.name}
+                      secondary={`${selectedPatient.emergencyContact.relationship} | ${selectedPatient.emergencyContact.phoneNumber}`}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Address"
+                      secondary={selectedPatient.emergencyContact.address}
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
       </Dialog>
     </Container>
   );
