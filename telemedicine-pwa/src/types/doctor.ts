@@ -41,16 +41,29 @@ export interface Appointment {
 
 export interface PendingConsultation {
   id: string;
-  patientInfo: {
-    type: 'self' | 'child' | 'other';
-    age?: number;
+  assessment: {
+    recommendConsultation: boolean;
     specialty: string;
-    primarySymptom: string;
+    symptoms: string[];
+    urgency: 'low' | 'medium' | 'high';
   };
-  patientContact?: {
+  createdAt: Date;
+  doctorId: string;
+  estimatedWaitTime: string;
+  messages: any[];
+  patientContact: {
     email: string;
     phone: string;
   };
+  patientId: string;
+  patientInfo: {
+    additionalSymptoms: string[];
+    age: number | null;
+    primarySymptom: string;
+    specialty: string;
+    type: 'self' | 'child' | 'other';
+  };
+  prescription: null;
+  startTime: Date;
   status: 'pending' | 'active' | 'completed';
-  createdAt: Date;
 } 

@@ -66,8 +66,8 @@ export class DoctorService {
             const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef, 
-                where('doctorId', '==', doctorId),
-                where('status', '==', 'pending')
+                where('status', '==', 'pending'),
+                where('doctorId', '==', '') // Look for unassigned consultations
             );
             const querySnapshot = await getDocs(q);
             

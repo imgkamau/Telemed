@@ -100,11 +100,8 @@ export default function DoctorDashboard() {
         setLoading(true);
         const doctorData = await doctorService.fetchDoctorData(user.id);
         const appointments = await doctorService.fetchAppointments(user.id);
-        const pendingConsultations = await doctorService.fetchPendingConsultations(user.id);
-
         setDoctorData(doctorData);
         setAppointments(appointments);
-        setPendingConsultations(pendingConsultations);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -112,11 +109,30 @@ export default function DoctorDashboard() {
       }
     };
 
+    if (!db) throw new Error('Database not initialized');
+    
+    // Add real-time listener for pending consultations
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, 'consultations'),
+        where('status', '==', 'pending'),
+        where('doctorId', '==', '')
+      ),
+      (snapshot) => {
+        const consultations = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as PendingConsultation[];
+        setPendingConsultations(consultations);
+      }
+    );
+
     fetchData();
     webSocketService.connect();
 
     return () => {
       webSocketService.disconnect();
+      unsubscribe(); // Clean up the listener
     };
   }, [user?.id]);
 
@@ -167,6 +183,26 @@ export default function DoctorDashboard() {
       router.push(`/consultation/${consultationId}`);
     } catch (error) {
       console.error('Error accepting consultation:', error);
+    }
+  };
+
+  const rejectConsultation = async (consultationId: string) => {
+    if (!user?.id) return;
+
+    try {
+      if (!db) throw new Error('Database not initialized');
+      await updateDoc(doc(db, 'consultations', consultationId), {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelledBy: 'doctor'
+      });
+      
+      // Remove from local state to update UI immediately
+      setPendingConsultations(prev => 
+        prev.filter(consultation => consultation.id !== consultationId)
+      );
+    } catch (error) {
+      console.error('Error rejecting consultation:', error);
     }
   };
 
@@ -395,15 +431,24 @@ export default function DoctorDashboard() {
                       ) : (
                         <Typography color="error">Patient information not available</Typography>
                       )}
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        onClick={() => acceptConsultation(consultation.id)}
-                        sx={{ mt: 2 }}
-                      >
-                        Accept Consultation
-                      </Button>
+                      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          fullWidth
+                          onClick={() => acceptConsultation(consultation.id)}
+                        >
+                          Accept Consultation
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          fullWidth
+                          onClick={() => rejectConsultation(consultation.id)}
+                        >
+                          Reject
+                        </Button>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
