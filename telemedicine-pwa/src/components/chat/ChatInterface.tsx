@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CONSULTATION_FEE } from '../../config/constants';
 import { useRouter } from 'next/router';
 import { useNotification } from '../../contexts/NotificationContext';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 interface Message {
@@ -164,6 +164,11 @@ export default function ChatInterface() {
             status: 'pending',
             assessment: assessment,
             createdAt: new Date()
+          });
+
+          // Then update it with its own ID as the roomId
+          await updateDoc(consultationRef, {
+            roomId: consultationRef.id
           });
 
           router.push(`/consultation/${consultationRef.id}`);
