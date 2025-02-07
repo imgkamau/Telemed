@@ -27,6 +27,7 @@ export interface PatientBioData {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  password: string;
 }
 
 export interface Patient extends PatientBioData {

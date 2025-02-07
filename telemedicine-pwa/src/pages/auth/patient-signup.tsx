@@ -22,6 +22,9 @@ import { PatientService } from '../../services/PatientService';
 import { PatientBioData } from '../../types/patient';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { signup } from '../../firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const steps = ['Personal Information', 'Contact Details', 'Emergency Contact'];
 const patientService = new PatientService();
@@ -50,8 +53,10 @@ export default function PatientSignup() {
     },
     userId: user?.id || '',
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    password: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleNext = () => {
     if (validateCurrentStep()) {
@@ -88,20 +93,30 @@ export default function PatientSignup() {
     return true;
   };
 
-  const handleSubmit = async () => {
-    if (!validateCurrentStep()) return;
-    if (!user?.id) {
-      setError('User not authenticated');
-      return;
-    }
-
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
     try {
-      await patientService.createPatient(user.id, formData);
-      router.push('/patient/dashboard');
+      // 1. First create Firebase Auth account
+      const { user } = await signup(formData.email, formData.password);
+      
+      // 2. Then save additional user data to Firestore
+      if (!db) throw new Error('Database not initialized');
+      await setDoc(doc(db, 'patients', user.uid), {
+        ...formData,
+        id: user.uid,
+        role: 'patient',
+        createdAt: new Date()
+      });
+
+      // 3. Redirect to login
+      router.push('/auth/login');
+      
     } catch (error) {
-      setError('Failed to create patient profile');
-      console.error('Error creating patient:', error);
+      console.error('Registration error:', error);
+      setError('Failed to create an account');
     }
+    setLoading(false);
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -315,7 +330,13 @@ export default function PatientSignup() {
           </Button>
           <Button
             variant="contained"
-            onClick={activeStep === steps.length - 1 ? handleSubmit : handleNext}
+            onClick={(e) => {
+              if (activeStep === steps.length - 1) {
+                handleSubmit(e as any);
+              } else {
+                handleNext();
+              }
+            }}
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
           </Button>
