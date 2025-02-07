@@ -110,8 +110,11 @@ export default function DoctorDashboard() {
         setLoading(true);
         const doctorData = await doctorService.fetchDoctorData(user.id);
         const appointments = await doctorService.fetchAppointments(user.id);
+        const pendingConsultations = await doctorService.fetchPendingConsultations(user.id);
+
         setDoctorData(doctorData);
         setAppointments(appointments);
+        setPendingConsultations(pendingConsultations);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -119,30 +122,11 @@ export default function DoctorDashboard() {
       }
     };
 
-    if (!db) throw new Error('Database not initialized');
-    
-    // Add real-time listener for pending consultations
-    const unsubscribe = onSnapshot(
-      query(
-        collection(db, 'consultations'),
-        where('status', '==', 'pending'),
-        where('doctorId', '==', '')
-      ),
-      (snapshot) => {
-        const consultations = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PendingConsultation[];
-        setPendingConsultations(consultations);
-      }
-    );
-
     fetchData();
     webSocketService.connect();
 
     return () => {
       webSocketService.disconnect();
-      unsubscribe(); // Clean up the listener
     };
   }, [user?.id]);
 
@@ -183,7 +167,7 @@ export default function DoctorDashboard() {
 
   const acceptConsultation = async (consultationId: string) => {
     if (!user?.id) return;
-
+    
     try {
       if (!db) throw new Error('Database not initialized');
       await updateDoc(doc(db, 'consultations', consultationId), {

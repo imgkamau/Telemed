@@ -124,7 +124,6 @@ export default function ConsultationRoom() {
         roomId={id as string}
         userId={user?.id || ''}
         userName={user?.email || user?.phoneNumber || ''}
-        role={isPatient ? 'Host' : 'Cohost'}
       />
     );
   };

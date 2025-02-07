@@ -2,20 +2,23 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useRouter } from 'next/router';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ZegoRoomProps {
   roomId: string;
   userId: string;
   userName: string;
-  role?: 'Host' | 'Cohost';
 }
 
-function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
+function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const zegoRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const router = useRouter();
+  const { user } = useAuth();
 
   const cleanupMediaDevices = () => {
     if (mediaStreamRef.current) {
@@ -40,12 +43,19 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
 
         zegoRef.current.destroy();
         zegoRef.current = null;
+
+        // Redirect based on user role
+        if (user?.role === 'doctor') {
+          router.push('/doctor/dashboard');
+        } else {
+          router.push('/patient/dashboard');
+        }
       } catch (e) {
         console.error('Cleanup error:', e);
       }
     }
     cleanupMediaDevices();
-  }, [roomId]);
+  }, [roomId, router, user?.role]);
 
   const initZego = useCallback(async () => {
     try {
@@ -62,7 +72,7 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
       const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID!);
       const serverSecret = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET!;
       
-      console.log('Joining room with:', { roomId, userId, userName, role });
+      console.log('Joining room with:', { roomId, userId, userName });
 
       const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
         appID,
@@ -80,15 +90,11 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
         scenario: {
           mode: ZegoUIKitPrebuilt.OneONoneCall,
           config: {
-            role: role === 'Host' ? ZegoUIKitPrebuilt.Host : ZegoUIKitPrebuilt.Cohost,
+            role: ZegoUIKitPrebuilt.Host, // Everyone joins as Host
           },
         },
-        onLeaveRoom: () => {
-          handleLeaveRoom();
-          if (!isLeaving) {
-            handleRejoin();
-          }
-        },
+        showLeaveRoomConfirmDialog: true, // Show confirmation before leaving
+        onLeaveRoom: handleLeaveRoom,
         turnOnMicrophoneWhenJoining: true,
         turnOnCameraWhenJoining: true,
         showMyCameraToggleButton: true,
@@ -107,7 +113,7 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
       console.error('Error initializing Zego:', error);
       setError(error instanceof Error ? error.message : 'Failed to initialize video call');
     }
-  }, [roomId, userId, userName, role, isLeaving, handleLeaveRoom]);
+  }, [roomId, userId, userName, handleLeaveRoom]);
 
   useEffect(() => {
     let mounted = true;
@@ -196,4 +202,4 @@ function ZegoRoom({ roomId, userId, userName, role = 'Host' }: ZegoRoomProps) {
   );
 }
 
-export default ZegoRoom; 
+export default ZegoRoom;
