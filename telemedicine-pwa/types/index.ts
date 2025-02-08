@@ -17,14 +17,37 @@ export interface User {
 
   }
   
+  export interface PatientInfo {
+    type: 'self' | 'child' | 'other';
+    age?: number | null;
+    specialty: string;
+    primarySymptom: string;
+    additionalSymptoms: string[];
+  }
+  
+  export interface PatientContact {
+    email?: string;
+    phone?: string;
+  }
+  
   export interface Consultation {
     id: string;
+    patientId: string;
     doctorId: string;
-    userId: string;
-    status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-    type: 'chat' | 'video' | 'voice';
-    scheduledFor: Date;
+    patientInfo: PatientInfo;
+    patientContact: PatientContact;
+    status: 'pending' | 'active' | 'completed' | 'cancelled';
+    assessment: {
+      specialty: string;
+      urgency: 'low' | 'medium' | 'high';
+      symptoms: string[];
+      recommendConsultation: boolean;
+    };
     createdAt: Date;
+    startTime: Date;
+    messages: any[]; // Define message type if needed
+    prescription: any | null; // Define prescription type if needed
+    estimatedWaitTime: string;
   }
   
   export interface Payment {

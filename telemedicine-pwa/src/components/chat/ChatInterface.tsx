@@ -46,7 +46,7 @@ export default function ChatInterface() {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const { consultationStatus, consultationId, setConsultationId } = useNotification();
   const { patientInfo } = useChat();
-  
+
   useEffect(() => {
     if (consultationStatus === 'accepted') {
       // Redirect to consultation room
@@ -171,7 +171,7 @@ export default function ChatInterface() {
             },
             patientInfo: {
               type: patientInfo.type,
-              age: patientInfo.age,
+              age: patientInfo.age || null, // Add null fallback for undefined age
               specialty: patientInfo.specialty,
               primarySymptom: patientInfo.primarySymptom,
               additionalSymptoms: []
