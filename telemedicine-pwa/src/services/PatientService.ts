@@ -8,9 +8,12 @@ import {
   query, 
   where, 
   getDocs, 
-  Firestore 
+  Firestore,
+  orderBy
 } from 'firebase/firestore';
 import { Patient, PatientBioData } from '../types/patient';
+import { Consultation } from '../types';
+
 
 export class PatientService {
   private db: Firestore | undefined;
@@ -79,5 +82,26 @@ export class PatientService {
       id: patientDoc.id,
       ...patientDoc.data()
     } as Patient;
+  }
+
+  async fetchConsultationHistory(patientId: string): Promise<Consultation[]> {
+    try {
+      if (!this.db) throw new Error('Database not initialized');
+      
+      const q = query(
+        collection(this.db, 'consultations'),
+        where('patientId', '==', patientId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Consultation[];
+    } catch (error) {
+      console.error('Error fetching patient consultation history:', error);
+      return [];
+    }
   }
 } 

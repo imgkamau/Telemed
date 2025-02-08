@@ -43,6 +43,10 @@ import { PendingConsultation } from '../../types/doctor';
 import { PatientService } from '../../services/PatientService';
 import { Patient } from '../../types/patient';
 import CloseIcon from '@mui/icons-material/Close';
+import { ConsultationHistory } from '../../components/ConsultationHistory';
+import type { Consultation as ConsultationType } from '../../types';
+
+
 
 
 interface Appointment {
@@ -98,6 +102,7 @@ export default function DoctorDashboard() {
   const [pendingConsultations, setPendingConsultations] = useState<PendingConsultation[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
+  const [consultationHistory, setConsultationHistory] = useState<ConsultationType[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,6 +133,15 @@ export default function DoctorDashboard() {
     return () => {
       webSocketService.disconnect();
     };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user?.id) return;
+      const history = await doctorService.fetchConsultationHistory(user.id);
+      setConsultationHistory(history);
+    };
+    fetchHistory();
   }, [user?.id]);
 
   const handleAvailabilityToggle = async () => {
@@ -480,6 +494,13 @@ export default function DoctorDashboard() {
                 </Grid>
               )}
             </Grid>
+          </Paper>
+        </Grid>
+
+        {/* Consultation History */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
           </Paper>
         </Grid>
       </Grid>

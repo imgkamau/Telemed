@@ -3,6 +3,7 @@ export interface User {
     phoneNumber: string;
     name?: string;
     email?: string;
+    role: 'doctor' | 'patient' | 'admin';
   }
   
   export interface Doctor {

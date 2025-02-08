@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useRouter } from 'next/router';
 
 interface ZegoRoomProps {
   roomId: string;
   userId: string;
   userName: string;
+  isDoctor?: boolean;
 }
 
-function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
+function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const zegoRef = useRef<any>(null);
@@ -23,8 +28,27 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
     }
   };
 
-  const handleLeaveRoom = useCallback(() => {
+  const handleLeaveRoom = useCallback(async () => {
     setIsLeaving(true);
+    
+    try {
+      // Update consultation status
+      if (!db) throw new Error('Database not initialized');
+      const consultationRef = doc(db, 'consultations', roomId);
+      await updateDoc(consultationRef, {
+        status: 'completed',
+        endTime: new Date(),
+        completedAt: new Date()
+      });
+
+      // Redirect based on isDoctor prop
+      router.push(isDoctor ? '/doctor/dashboard' : '/patient/dashboard');
+    } catch (error) {
+      console.error('Error completing consultation:', error);
+      // Still redirect on error
+      router.push(isDoctor ? '/doctor/dashboard' : '/patient/dashboard');
+    }
+
     if (zegoRef.current) {
       try {
         zegoRef.current.destroy();
@@ -34,7 +58,7 @@ function ZegoRoom({ roomId, userId, userName }: ZegoRoomProps) {
       }
     }
     cleanupMediaDevices();
-  }, []);
+  }, [isDoctor, roomId, router]);
 
   const initZego = useCallback(async () => {
     try {

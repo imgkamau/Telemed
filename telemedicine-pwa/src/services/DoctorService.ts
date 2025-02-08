@@ -1,7 +1,9 @@
 import { db, auth } from '../config/firebase';
-import { doc, getDoc, collection, query, where, getDocs, Firestore } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, Firestore, orderBy } from 'firebase/firestore';
 import { Auth } from 'firebase/auth';
 import { DoctorData, Appointment, PendingConsultation } from '../types/doctor';
+import { Consultation } from '../types';
+
 
 export class DoctorService {
     private db: Firestore | undefined;
@@ -84,4 +86,25 @@ export class DoctorService {
             throw error;
         }
     }
+    async fetchConsultationHistory(doctorId: string): Promise<Consultation[]> {
+        try {
+          if (!this.db) throw new Error('Database not initialized');
+          
+          const q = query(
+            collection(this.db, 'consultations'),
+            where('doctorId', '==', doctorId),
+            where('status', '==', 'completed'),
+            orderBy('completedAt', 'desc')
+          );
+          
+          const querySnapshot = await getDocs(q);
+          return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Consultation[];
+        } catch (error) {
+          console.error('Error fetching consultation history:', error);
+          return [];
+        }
+      }
 }

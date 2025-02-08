@@ -23,6 +23,8 @@ import { Patient } from '../../types/patient';
 import { useRouter } from 'next/router';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { ConsultationHistory } from '../../components/ConsultationHistory';
+import { Consultation } from '../../types';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -56,6 +58,7 @@ export default function PatientDashboard() {
   const [consultations, setConsultations] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [consultationHistory, setConsultationHistory] = useState<Consultation[]>([]);
 
   const router = useRouter();
 
@@ -78,6 +81,15 @@ export default function PatientDashboard() {
     };
 
     fetchData();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user?.id) return;
+      const history = await patientService.fetchConsultationHistory(user.id);
+      setConsultationHistory(history);
+    };
+    fetchHistory();
   }, [user?.id]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -203,46 +215,7 @@ export default function PatientDashboard() {
 
             {/* Consultation History */}
             <TabPanel value={tabValue} index={0}>
-              <Grid container spacing={2}>
-                {consultations.map((consultation) => (
-                  <Grid item xs={12} key={consultation.id}>
-                    <Card>
-                      <CardContent>
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Typography variant="h6">
-                            {consultation.assessment?.specialty || 'General Consultation'}
-                          </Typography>
-                          <Chip 
-                            label={consultation.status}
-                            color={
-                              consultation.status === 'completed' ? 'success' :
-                              consultation.status === 'active' ? 'primary' : 'default'
-                            }
-                          />
-                        </Box>
-                        <Typography color="textSecondary" gutterBottom>
-                          {new Date(consultation.createdAt).toLocaleString()}
-                        </Typography>
-                        <Typography variant="body2">
-                          Primary Concern: {consultation.patientInfo?.primarySymptom}
-                        </Typography>
-                        {consultation.doctorId && (
-                          <Typography variant="body2">
-                            Doctor: Dr. {consultation.doctorName || 'Not assigned'}
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-                {consultations.length === 0 && (
-                  <Grid item xs={12}>
-                    <Typography color="textSecondary" align="center">
-                      No consultations yet
-                    </Typography>
-                  </Grid>
-                )}
-              </Grid>
+              <ConsultationHistory consultations={consultationHistory} />
             </TabPanel>
 
             {/* Prescriptions */}
