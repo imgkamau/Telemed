@@ -7,6 +7,7 @@ const AFRICA_TALKING_USERNAME = process.env.AFRICA_TALKING_USERNAME!;
 
 export async function sendNotification(userId: string, message: string, type: 'consultation' | 'prescription') {
   try {
+    if (!db) throw new Error('Database not initialized');
     const notificationsRef = collection(db, 'notifications');
     await addDoc(notificationsRef, {
       userId,

@@ -24,8 +24,6 @@ import {
   alpha
 } from '@mui/material';
 import { Person, ChildCare, Group, ArrowForward } from '@mui/icons-material';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import { useRouter } from 'next/router';
 import { specialties } from '../../components/chat/InitialAssessment';
 import { useChat } from '../../contexts/ChatContext';
@@ -188,7 +186,6 @@ export default function PreChatAssessment() {
     if (!user) return;
     
     try {
-      // For context (uses undefined)
       const contextData = {
         type: patientType as 'self' | 'child' | 'other',
         age: patientType === 'self' ? undefined : patientAge ? parseInt(patientAge) : undefined,
@@ -196,49 +193,8 @@ export default function PreChatAssessment() {
         primarySymptom,
       };
 
-      // For Firestore (uses null)
-      const firestoreData = {
-        type: patientType as 'self' | 'child' | 'other',
-        age: patientType === 'self' ? null : patientAge ? parseInt(patientAge) : null,
-        specialty: selectedSpecialty,
-        primarySymptom,
-      };
-
-      // Store in context for AI chat
+      // Just store in context and redirect
       setPatientInfo(contextData);
-      
-      // Create consultation request in Firestore
-      if (!db) throw new Error('Database not initialized');
-      const consultationRef = await addDoc(collection(db, 'consultations'), {
-        patientId: user.id,
-        patientContact: {
-          email: user.email,
-          phone: user.phoneNumber
-        },
-        patientInfo: {
-          type: patientType as 'self' | 'child' | 'other',
-          age: patientType === 'self' ? null : patientAge ? parseInt(patientAge) : null,
-          specialty: selectedSpecialty,
-          primarySymptom: primarySymptom,
-          additionalSymptoms: [], // Add if you have this data
-        },
-        status: 'pending',
-        createdAt: new Date(),
-        assessment: {
-          specialty: selectedSpecialty,
-          urgency: 'medium',
-          symptoms: [primarySymptom],
-          recommendConsultation: true
-        },
-        // Add these fields to match your Consultation interface
-        doctorId: '', // Will be set when a doctor accepts
-        messages: [],
-        prescription: null,
-        startTime: new Date(),
-        estimatedWaitTime: '5-10 minutes'
-      });
-      
-      // Redirect to AI chat
       router.push('/chat');
       
     } catch (error) {

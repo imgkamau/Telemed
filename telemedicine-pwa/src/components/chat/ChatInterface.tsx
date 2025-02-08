@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Paper, 
-  Typography, 
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  Typography,
   CircularProgress,
   Container,
   Avatar
@@ -16,6 +16,8 @@ import { useRouter } from 'next/router';
 import { useNotification } from '../../contexts/NotificationContext';
 import { collection, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useChat } from '../../contexts/ChatContext';
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,7 +45,8 @@ export default function ChatInterface() {
   const [showPayment, setShowPayment] = useState(false);
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const { consultationStatus, consultationId, setConsultationId } = useNotification();
-
+  const { patientInfo } = useChat();
+  
   useEffect(() => {
     if (consultationStatus === 'accepted') {
       // Redirect to consultation room
@@ -84,18 +87,18 @@ export default function ChatInterface() {
       });
 
       const data = await response.json();
-      
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: data.message 
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.message
       }]);
 
       if (data.requiresDoctor) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: 'Based on your symptoms, I recommend consulting with a doctor. The consultation fee is KES 50. Would you like to proceed?' 
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Based on your symptoms, I recommend consulting with a doctor. The consultation fee is KES 50. Would you like to proceed?'
         }]);
-        
+
         // Make sure assessment has all required fields
         setAssessment({
           specialty: data.assessment.specialty || 'General Practice', // Add default
@@ -103,14 +106,14 @@ export default function ChatInterface() {
           symptoms: data.assessment.symptoms || [],
           recommendConsultation: true
         });
-        
+
         setShowPayment(true);
       }
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
       }]);
     } finally {
       setLoading(false);
@@ -120,7 +123,7 @@ export default function ChatInterface() {
   const handlePayment = async () => {
     try {
       setLoading(true);
-      
+
       if (!assessment?.specialty) {
         setMessages(prev => [...prev, {
           role: 'assistant',
@@ -129,23 +132,25 @@ export default function ChatInterface() {
         return;
       }
 
+      if (!patientInfo) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Missing patient information. Please start over.'
+        }]);
+        return;
+      }
+
       // MOCK PAYMENT FOR TESTING
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock successful payment
       const mockPaymentSuccess = true;
-      
+
       if (mockPaymentSuccess) {
-        // Log the assessment data
-        console.log('Assessment data:', assessment);
-        
-        const requestData = { 
+        const requestData = {
           specialty: assessment?.specialty,
           symptoms: assessment?.symptoms
         };
-        console.log('Sending to match-doctor:', requestData);
+        console.log('Creating consultation with data:', requestData);
 
-        // Match with doctor based on assessment
         const matchResponse = await fetch('/api/match-doctor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -153,19 +158,35 @@ export default function ChatInterface() {
         });
 
         const responseData = await matchResponse.json();
-        console.log('Match doctor response:', responseData);
+        console.log('Matched doctor response:', responseData);
 
         if (responseData.matchedDoctors && responseData.matchedDoctors.length > 0) {
-          // Create consultation
+          // Create single consultation with all necessary data
           if (!db) throw new Error('Database not initialized');
           const consultationRef = await addDoc(collection(db, 'consultations'), {
             patientId: user?.id,
+            patientContact: {
+              email: user?.email,
+              phone: user?.phoneNumber
+            },
+            patientInfo: {
+              type: patientInfo.type,
+              age: patientInfo.age,
+              specialty: patientInfo.specialty,
+              primarySymptom: patientInfo.primarySymptom,
+              additionalSymptoms: []
+            },
             doctorId: responseData.matchedDoctors[0].id,
             status: 'pending',
             assessment: assessment,
-            createdAt: new Date()
+            createdAt: new Date(),
+            messages: [],
+            prescription: null,
+            startTime: new Date(),
+            estimatedWaitTime: '5-10 minutes'
           });
 
+          console.log('Created consultation:', consultationRef.id);
           setConsultationId(consultationRef.id);
           router.push(`/consultation/${consultationRef.id}`);
         } else {
@@ -196,9 +217,9 @@ export default function ChatInterface() {
         </Box>
 
         {/* Messages Area */}
-        <Box sx={{ 
-          flex: 1, 
-          overflow: 'auto', 
+        <Box sx={{
+          flex: 1,
+          overflow: 'auto',
           p: 2,
           display: 'flex',
           flexDirection: 'column',

@@ -20,23 +20,38 @@ export default function ConsultationRoom() {
   const [loadingMessage, setLoadingMessage] = useState('Setting up your consultation...');
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) {
+      console.log('Missing id or user:', { id, userId: user?.id });
+      return;
+    }
 
-    // Show loading messages sequence
-    const messages = [
-      { text: 'Connecting to consultation room...', delay: 1000 },
-      { text: 'Setting up secure video connection...', delay: 2000 },
-      { text: 'Almost ready...', delay: 3000 }
-    ];
+    if (!db) {
+      console.error('Database not initialized');
+      return;
+    }
 
-    messages.forEach(({ text, delay }) => {
-      setTimeout(() => setLoadingMessage(text), delay);
-    });
-
-    if (!db) return;
+    console.log('Initializing consultation room:', id);
     const unsubscribe = onSnapshot(doc(db, 'consultations', id as string), (doc) => {
       if (doc.exists()) {
-        setConsultation(doc.data());
+        const data = doc.data();
+        console.log('Consultation data:', {
+          id: doc.id,
+          status: data.status,
+          patientId: data.patientId,
+          doctorId: data.doctorId
+        });
+        
+        // Verify user is participant
+        if (data.patientId !== user.id && data.doctorId !== user.id) {
+          console.error('User not authorized for this consultation');
+          router.push('/');
+          return;
+        }
+        
+        setConsultation(data);
+      } else {
+        console.error('Consultation not found');
+        router.push('/');
       }
       setLoading(false);
     });
