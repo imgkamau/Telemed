@@ -106,6 +106,7 @@ export default function DoctorDashboard() {
   const [consultationHistory, setConsultationHistory] = useState<ConsultationType[]>([]);
   const [myPatients, setMyPatients] = useState<Map<string, Patient>>(new Map());
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const [pendingConsultationsWithPatients, setPendingConsultationsWithPatients] = useState<(PendingConsultation & { patientName: string })[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -169,6 +170,32 @@ export default function DoctorDashboard() {
       fetchMyPatients();
     }
   }, [consultationHistory, user?.id]);
+
+  useEffect(() => {
+    const fetchPendingWithPatients = async () => {
+      if (!user?.id) return;
+      try {
+        const consultations = await doctorService.fetchPendingConsultations(user.id);
+        
+        // Fetch patient data for each consultation
+        const withPatients = await Promise.all(
+          consultations.map(async (consultation) => {
+            const patientData = await doctorService.fetchPatientBioData(consultation.patientId);
+            return {
+              ...consultation,
+              patientName: patientData?.fullName || 'Unknown Patient'
+            };
+          })
+        );
+        
+        setPendingConsultationsWithPatients(withPatients);
+      } catch (error) {
+        console.error('Error fetching pending consultations:', error);
+      }
+    };
+
+    fetchPendingWithPatients();
+  }, [user?.id]);
 
   const handleAvailabilityToggle = async () => {
     if (!user?.id || !doctorData) return;
@@ -287,291 +314,237 @@ export default function DoctorDashboard() {
         </Typography>
 
         <Box sx={{ width: '100%', mb: 3 }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+          >
             <Tab label="UPCOMING CONSULTATIONS" />
             <Tab label="PAST CONSULTATIONS" />
             <Tab label="MY PATIENTS" />
           </Tabs>
 
+          {/* First Tab: Upcoming Consultations */}
           <TabPanel value={tabValue} index={0}>
-            <Grid container spacing={3} sx={{ mt: 2 }}>
-              {consultations.map((consultation) => (
-                <Grid item xs={12} md={6} key={consultation.id}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6">
-                        Patient: {consultation.patientName}
-                      </Typography>
-                      <Typography color="textSecondary">
-                        Time: {new Date(consultation.scheduledTime).toLocaleString()}
-                      </Typography>
-                      <Typography>
-                        Symptoms: {consultation.symptoms}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleJoinConsultation(consultation.id)}
-                        sx={{ mt: 2 }}
-                      >
-                        Join Consultation
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
+            <Grid container spacing={3}>
+              {/* Profile Summary, Availability, Today's Stats stay at top */}
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 3, mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>Profile Summary</Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body1">
+                      Name: {doctorData?.name}
+                    </Typography>
+                    <Typography variant="body1">
+                      Specialization: {doctorData?.specialization}
+                    </Typography>
+                    <Typography variant="body1">
+                      Rating: {doctorData?.rating.toFixed(1)} ({doctorData?.totalRatings} reviews)
+                    </Typography>
+                    <Typography variant="body1">
+                      Fee: KES {doctorData?.consultationFee}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 3, mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>Availability</Typography>
+                  <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Switch
+                      checked={doctorData?.availability || false}
+                      onChange={handleAvailabilityToggle}
+                    />
+                    <Typography>
+                      {doctorData?.availability ? 'Available' : 'Unavailable'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setShowHoursDialog(true)}
+                    sx={{ mt: 2 }}
+                  >
+                    Set Working Hours
+                  </Button>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Paper sx={{ p: 3, mb: 3 }}>
+                  <Typography variant="h6" gutterBottom>Today's Stats</Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body1">
+                      Pending Appointments: {
+                        appointments.filter(apt =>
+                          apt.status === 'pending' &&
+                          new Date(apt.dateTime).toDateString() === new Date().toDateString()
+                        ).length
+                      }
+                    </Typography>
+                    <Typography variant="body1">
+                      Completed Today: {
+                        appointments.filter(apt =>
+                          apt.status === 'completed' &&
+                          new Date(apt.dateTime).toDateString() === new Date().toDateString()
+                        ).length
+                      }
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+
+              {/* Upcoming Appointments Table */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>Upcoming Appointments</Typography>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Patient Name</TableCell>
+                          <TableCell>Date & Time</TableCell>
+                          <TableCell>Symptoms</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {appointments
+                          .filter(apt => new Date(apt.dateTime) >= new Date())
+                          .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+                          .map((appointment) => (
+                            <TableRow key={appointment.id}>
+                              <TableCell>{appointment.patientName}</TableCell>
+                              <TableCell>
+                                {new Date(appointment.dateTime).toLocaleString()}
+                              </TableCell>
+                              <TableCell>{appointment.symptoms}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={appointment.status}
+                                  color={
+                                    appointment.status === 'completed' ? 'success' :
+                                      appointment.status === 'cancelled' ? 'error' : 'warning'
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => handleJoinConsultation(appointment.id)}
+                                >
+                                  Join
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              </Grid>
+
+              {/* Pending Consultations */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>Pending Consultations</Typography>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Patient Name</TableCell>
+                          <TableCell>Symptoms</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pendingConsultationsWithPatients.map((consultation) => (
+                          <TableRow key={consultation.id}>
+                            <TableCell>{consultation.patientName}</TableCell>
+                            <TableCell>{consultation.patientInfo.primarySymptom}</TableCell>
+                            <TableCell>
+                              <Chip label={consultation.status} color="warning" />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => acceptConsultation(consultation.id)}
+                              >
+                                Accept
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {pendingConsultationsWithPatients.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} align="center">
+                              No pending consultations
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              </Grid>
             </Grid>
           </TabPanel>
 
+          {/* Second Tab: Past Consultations */}
           <TabPanel value={tabValue} index={1}>
-            <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
+            <Paper sx={{ p: 3 }}>
+              <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
+            </Paper>
           </TabPanel>
 
+          {/* Third Tab: My Patients */}
           <TabPanel value={tabValue} index={2}>
-            {loadingPatients ? (
-              <CircularProgress />
-            ) : (
-              <Grid container spacing={2}>
-                {Array.from(myPatients.values()).map((patient) => (
-                  <Grid item xs={12} md={6} key={patient.id}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography variant="h6">{patient.fullName}</Typography>
-                      <Typography color="text.secondary">
-                        Age: {patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : 'N/A'}
-                      </Typography>
-                      <Typography>
-                        Contact: {patient.phoneNumber || patient.email}
-                      </Typography>
-                      <Typography>
-                        Last Consultation: {
-                          consultationHistory
-                            .find(c => c.patientId === patient.id)
-                            ?.createdAt.toLocaleDateString()
-                        }
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                ))}
-                {myPatients.size === 0 && (
-                  <Grid item xs={12}>
-                    <Typography color="text.secondary" align="center">
-                      No patient records found
-                    </Typography>
-                  </Grid>
-                )}
-              </Grid>
-            )}
+            <Paper sx={{ p: 3 }}>
+              {loadingPatients ? (
+                <Box display="flex" justifyContent="center" p={3}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <Grid container spacing={2}>
+                  {Array.from(myPatients.values()).map((patient) => (
+                    <Grid item xs={12} md={6} key={patient.id}>
+                      <Paper elevation={2} sx={{ p: 2 }}>
+                        <Typography variant="h6" gutterBottom>{patient.fullName}</Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Typography variant="body2">
+                            Age: {patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : 'N/A'}
+                          </Typography>
+                          <Typography variant="body2">
+                            Contact: {patient.phoneNumber || patient.email}
+                          </Typography>
+                          <Typography variant="body2">
+                            Last Consultation: {
+                              consultationHistory
+                                .find(c => c.patientId === patient.id)
+                                ?.createdAt.toLocaleDateString()
+                            }
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  ))}
+                  {myPatients.size === 0 && (
+                    <Grid item xs={12}>
+                      <Box textAlign="center" p={3}>
+                        <Typography color="text.secondary">
+                          No patient records found
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </Paper>
           </TabPanel>
         </Box>
       </Box>
-
-      <Grid container spacing={3}>
-        {/* Profile Summary */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Profile Summary
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body1">
-                Name: {doctorData?.name}
-              </Typography>
-              <Typography variant="body1">
-                Specialization: {doctorData?.specialization}
-              </Typography>
-              <Typography variant="body1">
-                Rating: {doctorData?.rating.toFixed(1)} ({doctorData?.totalRatings} reviews)
-              </Typography>
-              <Typography variant="body1">
-                Fee: KES {doctorData?.consultationFee}
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Availability Controls */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Availability
-            </Typography>
-            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Switch
-                checked={doctorData?.availability || false}
-                onChange={handleAvailabilityToggle}
-              />
-              <Typography>
-                {doctorData?.availability ? 'Available' : 'Unavailable'}
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              onClick={() => setShowHoursDialog(true)}
-              sx={{ mt: 2 }}
-            >
-              Set Working Hours
-            </Button>
-          </Paper>
-        </Grid>
-
-        {/* Quick Stats */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Today's Stats
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body1">
-                Pending Appointments: {
-                  appointments.filter(apt =>
-                    apt.status === 'pending' &&
-                    new Date(apt.dateTime).toDateString() === new Date().toDateString()
-                  ).length
-                }
-              </Typography>
-              <Typography variant="body1">
-                Completed Today: {
-                  appointments.filter(apt =>
-                    apt.status === 'completed' &&
-                    new Date(apt.dateTime).toDateString() === new Date().toDateString()
-                  ).length
-                }
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Appointments Table */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Upcoming Appointments
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Patient Name</TableCell>
-                    <TableCell>Date & Time</TableCell>
-                    <TableCell>Symptoms</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {appointments
-                    .filter(apt => new Date(apt.dateTime) >= new Date())
-                    .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
-                    .map((appointment) => (
-                      <TableRow key={appointment.id}>
-                        <TableCell>{appointment.patientName}</TableCell>
-                        <TableCell>
-                          {new Date(appointment.dateTime).toLocaleString()}
-                        </TableCell>
-                        <TableCell>{appointment.symptoms}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={appointment.status}
-                            color={
-                              appointment.status === 'completed' ? 'success' :
-                                appointment.status === 'cancelled' ? 'error' : 'warning'
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleJoinConsultation(appointment.id)}
-                          >
-                            Join
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Grid>
-
-        {/* Pending Consultations */}
-        <Grid item xs={12} md={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Pending Consultations
-            </Typography>
-            <Grid container spacing={2}>
-              {pendingConsultations.map((consultation) => (
-                <Grid item xs={12} md={4} key={consultation.id}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        New Consultation Request
-                      </Typography>
-                      {consultation.patientInfo ? (
-                        <>
-                          <Typography>
-                            <strong>Patient Type:</strong> {consultation.patientInfo.type}
-                            {consultation.patientInfo.age && ` (${consultation.patientInfo.age} years)`}
-                          </Typography>
-                          <Typography>
-                            <strong>Specialty:</strong> {consultation.patientInfo.specialty}
-                          </Typography>
-                          <Typography>
-                            <strong>Primary Concern:</strong> {consultation.patientInfo.primarySymptom}
-                          </Typography>
-                          <Typography>
-                            <strong>Contact:</strong> {consultation.patientContact?.email}
-                          </Typography>
-                          <Typography color="textSecondary" gutterBottom>
-                            Requested: {new Date(consultation.createdAt).toLocaleString()}
-                          </Typography>
-                        </>
-                      ) : (
-                        <Typography color="error">Patient information not available</Typography>
-                      )}
-                      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          color="info"
-                          fullWidth
-                          onClick={() => handleViewPatientDetails(consultation.patientId)}
-                        >
-                          View Patient Details
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          fullWidth
-                          onClick={() => acceptConsultation(consultation.id)}
-                        >
-                          Accept Consultation
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          fullWidth
-                          onClick={() => rejectConsultation(consultation.id)}
-                        >
-                          Reject
-                        </Button>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-              {pendingConsultations.length === 0 && (
-                <Grid item xs={12}>
-                  <Typography color="textSecondary" align="center">
-                    No pending consultations
-                  </Typography>
-                </Grid>
-              )}
-            </Grid>
-          </Paper>
-        </Grid>
-      </Grid>
 
       {/* Working Hours Dialog */}
       <Dialog open={showHoursDialog} onClose={() => setShowHoursDialog(false)}>

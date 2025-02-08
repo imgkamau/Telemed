@@ -9,7 +9,8 @@ import {
   where, 
   getDocs, 
   Firestore,
-  orderBy
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { Patient, PatientBioData } from '../types/patient';
 import { Consultation } from '../types';
@@ -106,6 +107,34 @@ export class PatientService {
     } catch (error) {
       console.error('Error fetching consultation history:', error);
       return [];
+    }
+  }
+
+  async fetchActiveConsultation(patientId: string): Promise<Consultation | null> {
+    try {
+      if (!this.db) throw new Error('Database not initialized');
+      
+      const consultationsRef = collection(this.db, 'consultations');
+      const q = query(
+        consultationsRef,
+        where('patientId', '==', patientId),
+        where('status', '==', 'active'),
+        limit(1)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) return null;
+      
+      const doc = querySnapshot.docs[0];
+      return {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        startTime: doc.data().startTime?.toDate()
+      } as Consultation;
+    } catch (error) {
+      console.error('Error fetching active consultation:', error);
+      return null;
     }
   }
 } 

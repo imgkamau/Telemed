@@ -56,6 +56,7 @@ export interface PendingConsultation {
     phone: string;
   };
   patientId: string;
+  patientName: string;
   patientInfo: {
     additionalSymptoms: string[];
     age: number | null;
