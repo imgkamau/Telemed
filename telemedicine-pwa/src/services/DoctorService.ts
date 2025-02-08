@@ -63,13 +63,17 @@ export class DoctorService {
                 console.warn('No database connection or authenticated user');
                 return [];
             }
+            
+            console.log('Fetching pending consultations for doctor:', doctorId);
             const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef, 
                 where('status', '==', 'pending'),
-                where('doctorId', '==', '') // Look for unassigned consultations
+                where('doctorId', '==', doctorId)
             );
+            
             const querySnapshot = await getDocs(q);
+            console.log('Found pending consultations:', querySnapshot.size);
             
             return querySnapshot.docs.map(doc => ({
                 id: doc.id,
