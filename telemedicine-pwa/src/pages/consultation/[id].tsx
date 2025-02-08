@@ -146,7 +146,9 @@ export default function ConsultationRoom() {
             {loadingMessage}
           </Typography>
           <Typography variant="body2" color="text.secondary" align="center">
-            Please wait while we connect you with your doctor...
+            {isPatient 
+              ? "Please wait while we connect you with your doctor..."
+              : "Please wait while we connect you with your patient..."}
           </Typography>
         </Box>
       </Container>
