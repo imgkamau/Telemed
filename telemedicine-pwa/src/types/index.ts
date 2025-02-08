@@ -22,14 +22,21 @@ export interface Assessment {
 
 export interface Consultation {
   id: string;
-  doctorId: string;
   patientId: string;
-  assessment: Assessment;
-  status: 'waiting' | 'active' | 'completed';
+  doctorId: string;
+  status: 'pending' | 'active' | 'completed' | 'cancelled';
   createdAt: Date;
+  startTime: Date;
+  patientInfo: {
+    type: 'self' | 'child' | 'other';
+    age?: number | null;
+    primarySymptom: string;
+    specialty: string;
+    additionalSymptoms: string[];
+  };
+  assessment: Assessment;
   messages: Message[];
   prescription: Prescription | null;
-  startTime: Date;
   estimatedWaitTime?: string;
 }
 

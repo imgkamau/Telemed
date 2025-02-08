@@ -1,5 +1,6 @@
-import { Box, Typography, Paper, Chip } from '@mui/material';
+import { Box, Typography, Paper, Chip, Button } from '@mui/material';
 import { Consultation } from '../types';
+import { useRouter } from 'next/router';
 
 interface ConsultationHistoryProps {
   consultations: Consultation[];
@@ -7,6 +8,8 @@ interface ConsultationHistoryProps {
 }
 
 export const ConsultationHistory = ({ consultations, isDoctor }: ConsultationHistoryProps) => {
+  const router = useRouter();
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -15,17 +18,28 @@ export const ConsultationHistory = ({ consultations, isDoctor }: ConsultationHis
       {consultations.map((consultation) => (
         <Paper key={consultation.id} sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1">
-            {isDoctor ? 
-              `Patient ID: ${consultation.patientId}` : 
-              `Doctor ID: ${consultation.doctorId}`
-            }
+            Status: {consultation.status}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Date: {new Date(consultation.startTime).toLocaleString()}
+            Created: {new Date(consultation.createdAt).toLocaleString()}
           </Typography>
+          <Typography variant="body2">
+            Primary Symptom: {consultation.patientInfo.primarySymptom}
+          </Typography>
+          {consultation.status === 'active' && (
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              sx={{ mt: 1 }}
+              onClick={() => router.push(`/consultation/${consultation.id}`)}
+            >
+              Join Consultation
+            </Button>
+          )}
           <Chip 
             label={consultation.status}
-            color={consultation.status === 'completed' ? 'success' : 'default'}
+            color={consultation.status === 'completed' ? 'success' : 'primary'}
             size="small"
             sx={{ mt: 1 }}
           />

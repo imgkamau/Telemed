@@ -45,7 +45,8 @@ import { Patient } from '../../types/patient';
 import CloseIcon from '@mui/icons-material/Close';
 import { ConsultationHistory } from '../../components/ConsultationHistory';
 import type { Consultation as ConsultationType } from '../../types';
-
+import TabPanel from '../../components/TabPanel';
+import { calculateAge } from '../../utils/dateUtils';
 
 
 
@@ -103,6 +104,8 @@ export default function DoctorDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [consultationHistory, setConsultationHistory] = useState<ConsultationType[]>([]);
+  const [myPatients, setMyPatients] = useState<Map<string, Patient>>(new Map());
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -143,6 +146,29 @@ export default function DoctorDashboard() {
     };
     fetchHistory();
   }, [user?.id]);
+
+  useEffect(() => {
+    const fetchMyPatients = async () => {
+      if (!user?.id) return;
+      setLoadingPatients(true);
+      try {
+        // Get unique patient IDs from consultations
+        const uniquePatientIds = Array.from(
+          new Set(consultationHistory.map(c => c.patientId))
+        );
+        const patientsData = await doctorService.fetchPatientsData(uniquePatientIds);
+        setMyPatients(patientsData);
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+      } finally {
+        setLoadingPatients(false);
+      }
+    };
+    
+    if (consultationHistory.length > 0) {
+      fetchMyPatients();
+    }
+  }, [consultationHistory, user?.id]);
 
   const handleAvailabilityToggle = async () => {
     if (!user?.id || !doctorData) return;
@@ -231,6 +257,10 @@ export default function DoctorDashboard() {
     }
   };
 
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
@@ -256,38 +286,83 @@ export default function DoctorDashboard() {
           Doctor Dashboard
         </Typography>
 
-        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-          <Tab label="Upcoming Consultations" />
-          <Tab label="Past Consultations" />
-        </Tabs>
+        <Box sx={{ width: '100%', mb: 3 }}>
+          <Tabs value={tabValue} onChange={handleTabChange}>
+            <Tab label="UPCOMING CONSULTATIONS" />
+            <Tab label="PAST CONSULTATIONS" />
+            <Tab label="MY PATIENTS" />
+          </Tabs>
 
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          {consultations.map((consultation) => (
-            <Grid item xs={12} md={6} key={consultation.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">
-                    Patient: {consultation.patientName}
-                  </Typography>
-                  <Typography color="textSecondary">
-                    Time: {new Date(consultation.scheduledTime).toLocaleString()}
-                  </Typography>
-                  <Typography>
-                    Symptoms: {consultation.symptoms}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleJoinConsultation(consultation.id)}
-                    sx={{ mt: 2 }}
-                  >
-                    Join Consultation
-                  </Button>
-                </CardContent>
-              </Card>
+          <TabPanel value={tabValue} index={0}>
+            <Grid container spacing={3} sx={{ mt: 2 }}>
+              {consultations.map((consultation) => (
+                <Grid item xs={12} md={6} key={consultation.id}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6">
+                        Patient: {consultation.patientName}
+                      </Typography>
+                      <Typography color="textSecondary">
+                        Time: {new Date(consultation.scheduledTime).toLocaleString()}
+                      </Typography>
+                      <Typography>
+                        Symptoms: {consultation.symptoms}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleJoinConsultation(consultation.id)}
+                        sx={{ mt: 2 }}
+                      >
+                        Join Consultation
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={1}>
+            <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={2}>
+            {loadingPatients ? (
+              <CircularProgress />
+            ) : (
+              <Grid container spacing={2}>
+                {Array.from(myPatients.values()).map((patient) => (
+                  <Grid item xs={12} md={6} key={patient.id}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="h6">{patient.fullName}</Typography>
+                      <Typography color="text.secondary">
+                        Age: {patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : 'N/A'}
+                      </Typography>
+                      <Typography>
+                        Contact: {patient.phoneNumber || patient.email}
+                      </Typography>
+                      <Typography>
+                        Last Consultation: {
+                          consultationHistory
+                            .find(c => c.patientId === patient.id)
+                            ?.createdAt.toLocaleDateString()
+                        }
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+                {myPatients.size === 0 && (
+                  <Grid item xs={12}>
+                    <Typography color="text.secondary" align="center">
+                      No patient records found
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            )}
+          </TabPanel>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -494,13 +569,6 @@ export default function DoctorDashboard() {
                 </Grid>
               )}
             </Grid>
-          </Paper>
-        </Grid>
-
-        {/* Consultation History */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
           </Paper>
         </Grid>
       </Grid>

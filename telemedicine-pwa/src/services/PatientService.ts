@@ -88,19 +88,23 @@ export class PatientService {
     try {
       if (!this.db) throw new Error('Database not initialized');
       
+      const consultationsRef = collection(this.db, 'consultations');
       const q = query(
-        collection(this.db, 'consultations'),
+        consultationsRef,
         where('patientId', '==', patientId),
+        where('status', 'in', ['active', 'completed']),
         orderBy('createdAt', 'desc')
       );
       
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        startTime: doc.data().startTime?.toDate()
       })) as Consultation[];
     } catch (error) {
-      console.error('Error fetching patient consultation history:', error);
+      console.error('Error fetching consultation history:', error);
       return [];
     }
   }
