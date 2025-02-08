@@ -170,11 +170,18 @@ export default function DoctorDashboard() {
     
     try {
       if (!db) throw new Error('Database not initialized');
-      await updateDoc(doc(db, 'consultations', consultationId), {
-        doctorId: user.id,
-        status: 'active'
-      });
-      router.push(`/consultation/${consultationId}`);
+      const consultationRef = doc(db, 'consultations', consultationId);
+      const consultationSnap = await getDoc(consultationRef);
+      const consultationData = consultationSnap.data();
+      
+      if (consultationData) {
+        await updateDoc(consultationRef, {
+          doctorId: user.id,
+          status: 'active'
+        });
+        
+        router.push(`/consultation/${consultationData.roomId}`);  // Use roomId for routing
+      }
     } catch (error) {
       console.error('Error accepting consultation:', error);
     }

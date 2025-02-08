@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Typography, Paper, CircularProgress, Container, Button } from '@mui/material';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTermsAcceptance } from '../../hooks/useTermsAcceptance';
@@ -34,27 +34,21 @@ export default function ConsultationRoom() {
   useEffect(() => {
     if (!id) return;
 
-    // Show loading messages sequence
-    const messages = [
-      { text: 'Connecting to consultation room...', delay: 1000 },
-      { text: 'Setting up secure video connection...', delay: 2000 },
-      { text: 'Almost ready...', delay: 3000 }
-    ];
-
-    messages.forEach(({ text, delay }) => {
-      setTimeout(() => setLoadingMessage(text), delay);
-    });
-
-    if (!db) return;
-    const unsubscribe = onSnapshot(doc(db, 'consultations', id as string), (doc) => {
-      if (doc.exists()) {
-        setConsultation(doc.data());
+    const fetchConsultation = async () => {
+      // Query consultation by roomId instead of consultation ID
+      if (!db) throw new Error('Database not initialized');
+      const consultationsRef = collection(db, 'consultations');
+      const q = query(consultationsRef, where('roomId', '==', id));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const consultationData = querySnapshot.docs[0].data();
+        setConsultation(consultationData);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, [id, user]);
+    fetchConsultation();
+  }, [id]);
 
   const handleJoinConsultation = () => {
     if (!checkTermsAcceptance()) {

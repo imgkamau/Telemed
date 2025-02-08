@@ -136,7 +136,6 @@ export default function ChatInterface() {
       const mockPaymentSuccess = true;
       
       if (mockPaymentSuccess) {
-        // Log the assessment data
         console.log('Assessment data:', assessment);
         
         const requestData = { 
@@ -145,7 +144,6 @@ export default function ChatInterface() {
         };
         console.log('Sending to match-doctor:', requestData);
 
-        // Match with doctor based on assessment
         const matchResponse = await fetch('/api/match-doctor', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -156,22 +154,24 @@ export default function ChatInterface() {
         console.log('Match doctor response:', responseData);
 
         if (responseData.matchedDoctors && responseData.matchedDoctors.length > 0) {
-          // Create consultation
+          // Create consultation with roomId
           if (!db) throw new Error('Database not initialized');
+          const roomId = `room_${Date.now()}`;
           const consultationRef = await addDoc(collection(db, 'consultations'), {
             patientId: user?.id,
             doctorId: responseData.matchedDoctors[0].id,
             status: 'pending',
             assessment: assessment,
-            createdAt: new Date()
+            createdAt: new Date(),
+            roomId: roomId
           });
 
           setConsultationId(consultationRef.id);
-          router.push(`/consultation/${consultationRef.id}`);
+          router.push(`/consultation/${roomId}`);  // Use roomId for routing
         } else {
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: 'Sorry, no doctors are currently available. Please try again later.'
+            content: 'Sorry, no doctors are currently available. Please try again.'
           }]);
         }
       }
