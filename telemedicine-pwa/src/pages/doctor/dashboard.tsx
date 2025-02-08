@@ -162,19 +162,26 @@ export default function DoctorDashboard() {
   };
 
   const handleJoinConsultation = (consultationId: string) => {
+    console.log('Doctor joining consultation:', consultationId);
     window.location.href = `/consultation/${consultationId}`;
   };
 
   const acceptConsultation = async (consultationId: string) => {
+    console.log('Doctor accepting consultation:', consultationId);
     if (!user?.id) return;
     
     try {
       if (!db) throw new Error('Database not initialized');
-      await updateDoc(doc(db, 'consultations', consultationId), {
+      const consultationRef = doc(db, 'consultations', consultationId);
+      console.log('Updating consultation:', { doctorId: user.id, status: 'active' });
+      
+      await updateDoc(consultationRef, {
         doctorId: user.id,
         status: 'active'
       });
-      router.push(`/consultation/${consultationId}`);
+      
+      console.log('Redirecting to consultation room:', consultationId);
+      window.location.href = `/consultation/${consultationId}`;
     } catch (error) {
       console.error('Error accepting consultation:', error);
     }
@@ -386,7 +393,7 @@ export default function DoctorDashboard() {
                           <Button
                             variant="contained"
                             size="small"
-                            href={`/consultation/${appointment.id}`}
+                            onClick={() => handleJoinConsultation(appointment.id)}
                           >
                             Join
                           </Button>
