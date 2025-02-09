@@ -195,21 +195,24 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         overflow: 'hidden'
       }}
     >
-      {/* Add backup leave button for mobile */}
+      {/* Backup leave button positioned just above video controls */}
       <button
         onClick={handleLeaveRoom}
         style={{
           position: 'fixed',
-          bottom: '140px',
+          bottom: '100px', // Adjusted to be just above video controls
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 10000,
+          zIndex: 100000,
           padding: '12px 24px',
           backgroundColor: '#ff4d4f',
           color: 'white',
           border: 'none',
           borderRadius: '24px',
-          display: 'none'
+          display: 'none',
+          width: 'auto',
+          minWidth: '120px',
+          fontSize: '16px'
         }}
       >
         Leave Room
@@ -220,32 +223,20 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
           width: 100vw !important;
         }
         
-        .call-button,
-        .leave-button,
-        .zego-uikit-prebuilt-hang-up-button {
-          position: fixed !important;
-          bottom: max(20px, env(safe-area-inset-bottom)) !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          z-index: 9999 !important;
-          touch-action: manipulation !important;
-          -webkit-tap-highlight-color: transparent !important;
-        }
-        
         /* Mobile-specific styles */
         @media (max-width: 768px) {
           .zego-uikit-prebuilt-video-conference-footer {
             padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
           }
           
-          /* Show backup button and ensure it's above Zego UI */
+          /* Show backup button directly above video controls */
           button {
             display: block !important;
-            z-index: 100000 !important; /* Increased z-index */
+            z-index: 100000 !important;
             position: fixed !important;
+            bottom: 100px !important; /* Consistent with inline style */
           }
 
-          /* Ensure the button container is above Zego elements */
           .zego-uikit-prebuilt {
             position: relative !important;
             z-index: 1 !important;
