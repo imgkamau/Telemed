@@ -112,12 +112,14 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
             role: ZegoUIKitPrebuilt.Host,
           },
         },
-        onLeaveRoom: () => {
-          handleLeaveRoom();
-          if (!isLeaving) {
-            handleRejoin();
-          }
+        showLeaveRoomConfirmDialog: true,
+        onLeaveRoom: async () => {
+          console.log('Leave room triggered');
+          setIsLeaving(true);
+          await handleLeaveRoom();
         },
+        sharedLinks: [],
+        showRoomDetailsButton: false,
         turnOnMicrophoneWhenJoining: true,
         turnOnCameraWhenJoining: true,
         showMyCameraToggleButton: true,
@@ -133,7 +135,7 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
       console.error('Error initializing Zego:', error);
       setError(error instanceof Error ? error.message : 'Failed to initialize video call');
     }
-  }, [roomId, userId, userName]);
+  }, [roomId, userId, userName, handleLeaveRoom]);
 
   useEffect(() => {
     let mounted = true;
@@ -189,32 +191,78 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         top: 0,
         left: 0,
         zIndex: 1000,
-        backgroundColor: '#f0f0f0'
+        backgroundColor: '#f0f0f0',
+        overflow: 'hidden'
       }}
     >
+      {/* Add backup leave button for mobile */}
+      <button
+        onClick={handleLeaveRoom}
+        style={{
+          position: 'fixed',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10000,
+          padding: '12px 24px',
+          backgroundColor: '#ff4d4f',
+          color: 'white',
+          border: 'none',
+          borderRadius: '24px',
+          display: 'none' // Hidden by default
+        }}
+      >
+        Leave Room
+      </button>
       <style jsx global>{`
-        .call-button {
+        .zego-uikit {
+          height: 100vh !important;
+          width: 100vw !important;
+        }
+        
+        .call-button,
+        .leave-button,
+        .zego-uikit-prebuilt-hang-up-button {
           position: fixed !important;
-          bottom: 20px !important;
+          bottom: max(20px, env(safe-area-inset-bottom)) !important;
           left: 50% !important;
           transform: translateX(-50%) !important;
-          z-index: 1001 !important;
+          z-index: 9999 !important;
+          touch-action: manipulation !important;
+          -webkit-tap-highlight-color: transparent !important;
         }
         
         /* Mobile-specific styles */
         @media (max-width: 768px) {
           .zego-uikit-prebuilt-video-conference-footer {
-            padding-bottom: env(safe-area-inset-bottom) !important;
+            padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
           }
           
-          .leave-button {
-            position: fixed !important;
-            bottom: 30px !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            z-index: 1002 !important;
+          .leave-button,
+          .zego-uikit-prebuilt-hang-up-button {
             padding: 12px 24px !important;
             border-radius: 24px !important;
+            background: #ff4d4f !important;
+            min-width: 120px !important;
+            touch-action: manipulation !important;
+          }
+          
+          /* Ensure buttons are clickable */
+          .zego-uikit button {
+            touch-action: manipulation !important;
+            cursor: pointer !important;
+          }
+
+          /* Specific targeting for hang-up button */
+          .zego-uikit-prebuilt-hang-up-button {
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+          }
+
+          /* Show backup button only on mobile when Zego button fails */
+          button {
+            display: block !important;
           }
         }
       `}</style>
