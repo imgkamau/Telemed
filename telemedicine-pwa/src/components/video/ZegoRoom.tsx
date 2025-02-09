@@ -195,12 +195,12 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         overflow: 'hidden'
       }}
     >
-      {/* Backup leave button positioned just above video controls */}
       <button
+        className="custom-leave-button"
         onClick={handleLeaveRoom}
         style={{
           position: 'fixed',
-          bottom: '100px', // Adjusted to be just above video controls
+          bottom: '80px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 100000,
@@ -212,7 +212,10 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
           display: 'none',
           width: 'auto',
           minWidth: '120px',
-          fontSize: '16px'
+          fontSize: '16px',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          pointerEvents: 'auto'
         }}
       >
         Leave Room
@@ -223,23 +226,33 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
           width: 100vw !important;
         }
         
-        /* Mobile-specific styles */
         @media (max-width: 768px) {
           .zego-uikit-prebuilt-video-conference-footer {
-            padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
+            padding-bottom: env(safe-area-inset-bottom) !important;
           }
           
-          /* Show backup button directly above video controls */
-          button {
+          .custom-leave-button {
             display: block !important;
             z-index: 100000 !important;
             position: fixed !important;
-            bottom: 100px !important; /* Consistent with inline style */
+            bottom: 80px !important;
+            transform: translateX(-50%) !important;
+            left: 50% !important;
+            width: auto !important;
+            min-width: 120px !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+            opacity: 1 !important;
           }
 
           .zego-uikit-prebuilt {
             position: relative !important;
             z-index: 1 !important;
+          }
+
+          .custom-leave-button {
+            position: relative !important;
+            z-index: 999999 !important;
           }
         }
       `}</style>
