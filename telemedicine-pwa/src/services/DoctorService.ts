@@ -97,16 +97,15 @@ export class DoctorService {
             const q = query(
                 consultationsRef,
                 where('doctorId', '==', doctorId),
-                where('status', 'in', ['active', 'completed']),
+                where('status', 'in', ['active', 'completed', 'pending']),
                 orderBy('createdAt', 'desc')
             );
             
             const querySnapshot = await getDocs(q);
-            console.log('Found consultations:', querySnapshot.size);
+            console.log('Raw consultation data:', querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                console.log('Consultation data:', data);
                 return {
                     id: doc.id,
                     patientId: data.patientId,
@@ -124,6 +123,8 @@ export class DoctorService {
             });
         } catch (error) {
             console.error('Error fetching consultation history:', error);
+            const firebaseError = error as { message: string; code: string };
+            console.error('Error details:', firebaseError.message, firebaseError.code);
             return [];
         }
     }

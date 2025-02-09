@@ -110,5 +110,20 @@ service cloud.firestore {
       allow update: if request.auth != null && 
         request.auth.uid == resource.data.patientId;
     }
+    
+        // Patient profile rules
+    match /patients/{patientId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == patientId || 
+        // Allow doctors to read patient data if they have consulted with the patient
+        exists(/databases/$(database)/documents/consultations/$(consultationId)) && 
+        get(/databases/$(database)/documents/consultations/$(consultationId)).data.doctorId == request.auth.uid && 
+        get(/databases/$(database)/documents/consultations/$(consultationId)).data.patientId == patientId
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == patientId;
+      allow update: if request.auth != null && 
+        request.auth.uid == patientId;
+    }
   }
 }

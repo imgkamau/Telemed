@@ -23,7 +23,7 @@ import { PatientBioData } from '../../types/patient';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { signup } from '../../firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 const steps = ['Personal Information', 'Contact Details', 'Emergency Contact'];
@@ -103,13 +103,18 @@ export default function PatientSignup() {
       }
       const { user } = await signup(formData.email, formData.password);
       
-      // 2. Then save additional user data to Firestore
       if (!db) throw new Error('Database not initialized');
+      
+      // Convert dates to Firestore Timestamps
       await setDoc(doc(db, 'patients', user.uid), {
         ...formData,
         id: user.uid,
         role: 'patient',
+        dateOfBirth: Timestamp.fromDate(formData.dateOfBirth),
+        createdAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(new Date())
       });
+      
       router.push('/auth/login');
     } catch (error: any) {
       console.error('Registration error:', error);
