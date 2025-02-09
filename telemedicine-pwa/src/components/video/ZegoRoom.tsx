@@ -200,7 +200,7 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         onClick={handleLeaveRoom}
         style={{
           position: 'fixed',
-          bottom: '80px',
+          bottom: '140px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 10000,
@@ -209,7 +209,7 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
           color: 'white',
           border: 'none',
           borderRadius: '24px',
-          display: 'none' // Hidden by default
+          display: 'none'
         }}
       >
         Leave Room
@@ -238,31 +238,17 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
             padding-bottom: max(30px, env(safe-area-inset-bottom)) !important;
           }
           
-          .leave-button,
-          .zego-uikit-prebuilt-hang-up-button {
-            padding: 12px 24px !important;
-            border-radius: 24px !important;
-            background: #ff4d4f !important;
-            min-width: 120px !important;
-            touch-action: manipulation !important;
-          }
-          
-          /* Ensure buttons are clickable */
-          .zego-uikit button {
-            touch-action: manipulation !important;
-            cursor: pointer !important;
-          }
-
-          /* Specific targeting for hang-up button */
-          .zego-uikit-prebuilt-hang-up-button {
-            pointer-events: auto !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-          }
-
-          /* Show backup button only on mobile when Zego button fails */
+          /* Show backup button and ensure it's above Zego UI */
           button {
             display: block !important;
+            z-index: 100000 !important; /* Increased z-index */
+            position: fixed !important;
+          }
+
+          /* Ensure the button container is above Zego elements */
+          .zego-uikit-prebuilt {
+            position: relative !important;
+            z-index: 1 !important;
           }
         }
       `}</style>
