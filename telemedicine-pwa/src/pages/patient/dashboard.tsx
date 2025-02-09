@@ -86,7 +86,9 @@ export default function PatientDashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       if (!user?.id) return;
+      console.log('Fetching for patient:', user.id); // Debug log
       const history = await patientService.fetchConsultationHistory(user.id);
+      console.log('Fetched history:', history); // Debug log
       setConsultationHistory(history);
     };
     fetchHistory();

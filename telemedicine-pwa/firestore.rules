@@ -87,6 +87,20 @@ service cloud.firestore {
         request.auth.uid == userId;
     }
 
+        // Consultation rules
+    match /consultations/{consultationId} {
+      allow read: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      
+      allow create: if request.auth != null && 
+        request.resource.data.patientId == request.auth.uid;
+      
+      allow update: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+    }
+
     // Pre-assessment rules
     match /preAssessments/{assessmentId} {
       allow read: if request.auth != null && 

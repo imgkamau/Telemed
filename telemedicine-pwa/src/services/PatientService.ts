@@ -89,21 +89,37 @@ export class PatientService {
     try {
       if (!this.db) throw new Error('Database not initialized');
       
+      console.log('Fetching consultations for patient:', patientId); // Debug log
+      
       const consultationsRef = collection(this.db, 'consultations');
       const q = query(
         consultationsRef,
         where('patientId', '==', patientId),
-        where('status', 'in', ['active', 'completed']),
+        where('status', 'in', ['active', 'completed', 'pending']), // Include all statuses
         orderBy('createdAt', 'desc')
       );
       
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        startTime: doc.data().startTime?.toDate()
-      })) as Consultation[];
+      console.log('Found consultations:', querySnapshot.size); // Debug log
+      
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Consultation data:', data); // Debug log
+        return {
+          id: doc.id,
+          patientId: data.patientId,
+          doctorId: data.doctorId,
+          status: data.status,
+          patientInfo: data.patientInfo,
+          createdAt: data.createdAt?.toDate(),
+          startTime: data.startTime?.toDate(),
+          completedAt: data.completedAt?.toDate(),
+          endTime: data.endTime?.toDate(),
+          prescription: data.prescription,
+          assessment: data.assessment,
+          messages: data.messages || []
+        } as Consultation;
+      });
     } catch (error) {
       console.error('Error fetching consultation history:', error);
       return [];
