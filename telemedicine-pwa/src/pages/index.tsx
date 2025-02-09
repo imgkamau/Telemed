@@ -36,7 +36,7 @@ export default function LandingPage() {
                   I am a Patient
                 </Typography>
                 <Typography color="textSecondary" align="center">
-                  Get instant medical consultation with qualified doctors
+                  Get medical consultation with qualified doctors
                 </Typography>
               </CardContent>
               <CardActions sx={{ flexDirection: 'column', gap: 1 }}>
