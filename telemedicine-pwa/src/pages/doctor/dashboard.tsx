@@ -149,27 +149,18 @@ export default function DoctorDashboard() {
   }, [user?.id]);
 
   useEffect(() => {
-    const fetchMyPatients = async () => {
+    const fetchPatients = async () => {
       if (!user?.id) return;
-      setLoadingPatients(true);
       try {
-        // Get unique patient IDs from consultations
-        const uniquePatientIds = Array.from(
-          new Set(consultationHistory.map(c => c.patientId))
-        );
-        const patientsData = await doctorService.fetchPatientsData(uniquePatientIds);
+        const patientsData = await doctorService.fetchMyPatients(user.id);
         setMyPatients(patientsData);
       } catch (error) {
         console.error('Error fetching patients:', error);
-      } finally {
-        setLoadingPatients(false);
       }
     };
-    
-    if (consultationHistory.length > 0) {
-      fetchMyPatients();
-    }
-  }, [consultationHistory, user?.id]);
+
+    fetchPatients();
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchPendingWithPatients = async () => {

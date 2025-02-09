@@ -91,6 +91,8 @@ export class DoctorService {
         try {
             if (!this.db) throw new Error('Database not initialized');
             
+            console.log('Fetching consultation history for doctor:', doctorId);
+            
             const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef,
@@ -100,12 +102,26 @@ export class DoctorService {
             );
             
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate(),
-                startTime: doc.data().startTime?.toDate()
-            })) as Consultation[];
+            console.log('Found consultations:', querySnapshot.size);
+            
+            return querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                console.log('Consultation data:', data);
+                return {
+                    id: doc.id,
+                    patientId: data.patientId,
+                    doctorId: data.doctorId,
+                    status: data.status,
+                    patientInfo: data.patientInfo,
+                    createdAt: data.createdAt?.toDate(),
+                    startTime: data.startTime?.toDate(),
+                    completedAt: data.completedAt?.toDate(),
+                    endTime: data.endTime?.toDate(),
+                    prescription: data.prescription,
+                    assessment: data.assessment,
+                    messages: data.messages || []
+                } as Consultation;
+            });
         } catch (error) {
             console.error('Error fetching consultation history:', error);
             return [];
@@ -152,6 +168,46 @@ export class DoctorService {
             return patientsMap;
         } catch (error) {
             console.error('Error fetching multiple patients data:', error);
+            return new Map();
+        }
+    }
+
+    async fetchMyPatients(doctorId: string): Promise<Map<string, Patient>> {
+        try {
+            if (!this.db) throw new Error('Database not initialized');
+            
+            console.log('Fetching patients for doctor:', doctorId);
+            
+            const consultationsRef = collection(this.db, 'consultations');
+            const q = query(
+                consultationsRef,
+                where('doctorId', '==', doctorId)
+            );
+            
+            const querySnapshot = await getDocs(q);
+            const patientIds = new Set(
+                querySnapshot.docs.map(doc => doc.data().patientId)
+            );
+            
+            const patientsMap = new Map<string, Patient>();
+            
+            await Promise.all(
+                Array.from(patientIds).map(async (patientId) => {
+                    const patientRef = doc(this.db!, 'patients', patientId);
+                    const patientSnap = await getDoc(patientRef);
+                    
+                    if (patientSnap.exists()) {
+                        patientsMap.set(patientId, {
+                            id: patientSnap.id,
+                            ...patientSnap.data()
+                        } as Patient);
+                    }
+                })
+            );
+            
+            return patientsMap;
+        } catch (error) {
+            console.error('Error fetching patients:', error);
             return new Map();
         }
     }
