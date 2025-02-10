@@ -93,47 +93,55 @@ export class DoctorService {
             
             console.log('Fetching consultation history for doctor:', doctorId);
             
+            // Simpler query without composite index requirements
             const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef,
-                where('doctorId', '==', doctorId),
-                orderBy('createdAt', 'desc')
+                where('doctorId', '==', doctorId)
+                // Remove orderBy temporarily
             );
             
             const querySnapshot = await getDocs(q);
-            console.log('Raw consultation data:', querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    doctorId: data.doctorId,
-                    status: data.status,
-                    createdAt: data.createdAt
-                };
-            }));
+            console.log('Found consultations:', querySnapshot.size);
+            console.log('Raw consultation data:', querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })));
             
+            if (querySnapshot.empty) {
+                console.log('No consultations found for doctor:', doctorId);
+                return [];
+            }
+
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                return {
-                    id: doc.id,
-                    patientId: data.patientId,
-                    doctorId: data.doctorId,
-                    status: data.status,
-                    patientInfo: {
-                        primarySymptom: data.patientInfo?.primarySymptom || '',
-                        age: data.patientInfo?.age,
-                        type: data.patientInfo?.type,
-                        additionalSymptoms: data.patientInfo?.additionalSymptoms || [],
-                        specialty: data.patientInfo?.specialty
-                    },
-                    createdAt: data.createdAt?.toDate() || new Date(),
-                    startTime: data.startTime?.toDate(),
-                    assessment: data.assessment || null,
-                    messages: data.messages || [],
-                    prescription: data.prescription || null,
-                    doctorNotes: data.doctorNotes || '',
-                    diagnosis: data.diagnosis || ''
-                } as Consultation;
-            });
+                try {
+                    return {
+                        id: doc.id,
+                        patientId: data.patientId,
+                        doctorId: data.doctorId,
+                        status: data.status,
+                        patientInfo: {
+                            primarySymptom: data.patientInfo?.primarySymptom || '',
+                            age: data.patientInfo?.age,
+                            type: data.patientInfo?.type,
+                            additionalSymptoms: data.patientInfo?.additionalSymptoms || [],
+                            specialty: data.patientInfo?.specialty
+                        },
+                        createdAt: data.createdAt?.toDate() || new Date(),
+                        startTime: data.startTime?.toDate(),
+                        assessment: data.assessment || null,
+                        messages: data.messages || [],
+                        prescription: data.prescription || null,
+                        doctorNotes: data.doctorNotes || '',
+                        diagnosis: data.diagnosis || ''
+                    } as Consultation;
+                } catch (error) {
+                    console.error('Error processing consultation doc:', doc.id, error);
+                    return null;
+                }
+            }).filter(Boolean) as Consultation[];
+            
         } catch (error) {
             console.error('Error fetching consultation history:', error);
             const firebaseError = error as { message: string; code: string };

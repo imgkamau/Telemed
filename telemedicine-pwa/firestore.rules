@@ -39,6 +39,18 @@ service cloud.firestore {
         request.auth.uid == resource.data.doctorId;
     }
 
+        // Consultation rules
+    match /consultations/{consultationId} {
+      allow read: if request.auth != null && (
+        resource == null ||  // Allow listing queries
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) ||  // Allow all doctors
+        resource.data.patientId == request.auth.uid ||  // Allow patient
+        resource.data.doctorId == request.auth.uid  // Allow assigned doctor
+      );
+      
+      allow write: if request.auth != null;
+    }
+
     // Consultation rules
     match /consultations/{consultationId} {
       allow read: if request.auth != null && (
