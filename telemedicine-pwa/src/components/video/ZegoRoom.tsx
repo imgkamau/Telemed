@@ -32,7 +32,6 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
     setIsLeaving(true);
     
     try {
-      // Update consultation status
       if (!db) throw new Error('Database not initialized');
       const consultationRef = doc(db, 'consultations', roomId);
       await updateDoc(consultationRef, {
@@ -41,12 +40,20 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         completedAt: new Date()
       });
 
-      // Redirect based on isDoctor prop
-      router.push(isDoctor ? '/doctor/dashboard' : '/patient/dashboard');
+      // Ensure proper redirection based on user type
+      if (isDoctor) {
+        await router.push('/doctor/dashboard');
+      } else {
+        await router.push('/patient/dashboard');
+      }
     } catch (error) {
       console.error('Error completing consultation:', error);
-      // Still redirect on error
-      router.push(isDoctor ? '/doctor/dashboard' : '/patient/dashboard');
+      // Still ensure proper redirection on error
+      if (isDoctor) {
+        await router.push('/doctor/dashboard');
+      } else {
+        await router.push('/patient/dashboard');
+      }
     }
 
     if (zegoRef.current) {

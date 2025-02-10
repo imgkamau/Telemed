@@ -87,6 +87,46 @@ const webSocketService = new WebSocketService('wss://weblogger1029353476-api.coo
 const doctorService = new DoctorService();
 const patientService = new PatientService();
 
+interface PatientDetailsModalProps {
+  open: boolean;
+  onClose: () => void;
+  patient: any; // Replace 'any' with your Patient interface
+}
+
+const PatientDetailsModal = ({ open, onClose, patient }: PatientDetailsModalProps) => {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Patient Details</DialogTitle>
+      <DialogContent>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Typography variant="h5">{patient?.firstName} {patient?.lastName}</Typography>
+          </Grid>
+          <Grid item xs={6}>
+            <Typography><strong>Age:</strong> {patient?.age}</Typography>
+            <Typography><strong>Gender:</strong> {patient?.gender}</Typography>
+            <Typography><strong>Contact:</strong> {patient?.phoneNumber}</Typography>
+            <Typography><strong>Email:</strong> {patient?.email}</Typography>
+            <Typography><strong>Address:</strong> {patient?.address}</Typography>
+          </Grid>
+          <Grid item xs={6}>
+            <Typography variant="h6">Emergency Contact</Typography>
+            <Typography><strong>Name:</strong> {patient?.emergencyContact?.name}</Typography>
+            <Typography><strong>Relationship:</strong> {patient?.emergencyContact?.relationship}</Typography>
+            <Typography><strong>Phone:</strong> {patient?.emergencyContact?.phone}</Typography>
+          </Grid>
+          <Grid item xs={12}>
+            <Typography variant="h6">Medical History</Typography>
+            <Typography><strong>Allergies:</strong> {patient?.medicalHistory?.allergies || 'None'}</Typography>
+            <Typography><strong>Chronic Conditions:</strong> {patient?.medicalHistory?.chronicConditions || 'None'}</Typography>
+            <Typography><strong>Current Medications:</strong> {patient?.medicalHistory?.currentMedications || 'None'}</Typography>
+          </Grid>
+        </Grid>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function DoctorDashboard() {
   const { user } = useAuth();
   const router = useRouter();
@@ -107,6 +147,7 @@ export default function DoctorDashboard() {
   const [myPatients, setMyPatients] = useState<Map<string, Patient>>(new Map());
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [pendingConsultationsWithPatients, setPendingConsultationsWithPatients] = useState<(PendingConsultation & { patientName: string })[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -277,6 +318,11 @@ export default function DoctorDashboard() {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handlePatientClick = (patient: any) => {
+    setSelectedPatient(patient);
+    setIsModalOpen(true);
   };
 
   if (loading) {
@@ -518,6 +564,16 @@ export default function DoctorDashboard() {
                             }
                           </Typography>
                         </Box>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePatientClick(patient);
+                          }}
+                        >
+                          View Details
+                        </Button>
                       </Paper>
                     </Grid>
                   ))}
@@ -574,87 +630,12 @@ export default function DoctorDashboard() {
         </DialogActions>
       </Dialog>
 
-      {/* Patient Details Dialog */}
-      <Dialog
-        open={showPatientDetails}
-        onClose={() => setShowPatientDetails(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          Patient Details
-          <IconButton
-            aria-label="close"
-            onClick={() => setShowPatientDetails(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {selectedPatient && (
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Personal Information</Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText primary="Full Name" secondary={selectedPatient.fullName} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="ID Number" secondary={selectedPatient.idNumber} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Date of Birth" 
-                      secondary={new Date(selectedPatient.dateOfBirth).toLocaleDateString()} 
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Gender" secondary={selectedPatient.gender} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Marital Status" secondary={selectedPatient.maritalStatus} />
-                  </ListItem>
-                </List>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="h6" gutterBottom>Contact Information</Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText primary="Phone" secondary={selectedPatient.phoneNumber} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Email" secondary={selectedPatient.email} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Address" secondary={selectedPatient.address} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Location" secondary={selectedPatient.location} />
-                  </ListItem>
-                </List>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>Emergency Contact</Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText 
-                      primary={selectedPatient.emergencyContact.name}
-                      secondary={`${selectedPatient.emergencyContact.relationship} | ${selectedPatient.emergencyContact.phoneNumber}`}
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Address"
-                      secondary={selectedPatient.emergencyContact.address}
-                    />
-                  </ListItem>
-                </List>
-              </Grid>
-            </Grid>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Patient Details Modal */}
+      <PatientDetailsModal 
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        patient={selectedPatient}
+      />
     </Container>
   );
 } 

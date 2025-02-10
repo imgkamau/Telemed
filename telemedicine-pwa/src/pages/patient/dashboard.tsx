@@ -68,30 +68,23 @@ export default function PatientDashboard() {
 
       try {
         setLoading(true);
-        const patient = await patientService.getPatient(user.id);
-        const consultationHistory = await patientService.getPatientConsultations(user.id);
+        const [patient, consultationHistory] = await Promise.all([
+          patientService.getPatient(user.id),
+          patientService.fetchConsultationHistory(user.id)  // Using single consultation fetch
+        ]);
         
         setPatientData(patient);
         setConsultations(consultationHistory);
+        setConsultationHistory(consultationHistory);
       } catch (error) {
         console.error('Error fetching patient data:', error);
+        setError('Failed to load patient data');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user?.id]);
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      if (!user?.id) return;
-      console.log('Fetching for patient:', user.id); // Debug log
-      const history = await patientService.fetchConsultationHistory(user.id);
-      console.log('Fetched history:', history); // Debug log
-      setConsultationHistory(history);
-    };
-    fetchHistory();
   }, [user?.id]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
