@@ -47,6 +47,7 @@ import { ConsultationHistory } from '../../components/ConsultationHistory';
 import type { Consultation as ConsultationType } from '../../types';
 import TabPanel from '../../components/TabPanel';
 import { calculateAge } from '../../utils/dateUtils';
+import { Consultation } from '../../types';
 
 
 
@@ -71,32 +72,6 @@ interface DoctorData {
   totalRatings: number;
   consultationFee: string;
   workingHours?: WorkingHours;
-}
-
-interface Consultation {
-  id: string;
-  patientId: string;
-  patientName: string;
-  status: string;
-  createdAt: Date;
-  patientInfo: {
-    age?: number;
-    type?: string;
-    additionalSymptoms?: string[];
-    primarySymptom: string;
-    specialty?: string;
-  };
-  doctorNotes?: string;
-  diagnosis?: string;
-  prescription?: {
-    medications: {
-      name: string;
-      dosage: string;
-      frequency: string;
-      duration: string;
-    }[];
-    instructions: string;
-  };
 }
 
 interface ConsultationDetailsProps {
@@ -252,6 +227,7 @@ export default function DoctorDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loadingConsultations, setLoadingConsultations] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -287,8 +263,15 @@ export default function DoctorDashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       if (!user?.id) return;
-      const history = await doctorService.fetchConsultationHistory(user.id);
-      setConsultationHistory(history);
+      setLoadingConsultations(true);
+      try {
+        const history = await doctorService.fetchConsultationHistory(user.id);
+        setConsultations(history);
+      } catch (error) {
+        console.error('Error fetching consultation history:', error);
+      } finally {
+        setLoadingConsultations(false);
+      }
     };
     fetchHistory();
   }, [user?.id]);
@@ -640,33 +623,49 @@ export default function DoctorDashboard() {
 
           {/* Second Tab: Past Consultations */}
           <TabPanel value={tabValue} index={1}>
-            <Grid container spacing={2}>
-              {consultations.map((consultation) => (
-                <Grid item xs={12} key={consultation.id}>
-                  <Card 
-                    onClick={() => handleConsultationClick(consultation)}
-                    sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: '#f5f5f5' }
-                    }}
-                  >
-                    <CardContent>
-                      <Typography variant="h6">
-                        Patient: {consultation.patientId}
+            {loadingConsultations ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {consultations.length > 0 ? (
+                  consultations.map((consultation) => (
+                    <Grid item xs={12} key={consultation.id}>
+                      <Card 
+                        onClick={() => handleConsultationClick(consultation)}
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: '#f5f5f5' }
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="h6">
+                            Patient: {consultation.patientId}
+                          </Typography>
+                          <Typography>Status: {consultation.status}</Typography>
+                          <Typography>
+                            Created: {consultation.createdAt instanceof Date 
+                              ? consultation.createdAt.toLocaleString()
+                              : new Date(consultation.createdAt).toLocaleString()}
+                          </Typography>
+                          <Typography>Primary Symptom: {consultation.patientInfo?.primarySymptom || 'None'}</Typography>
+                          <Typography>Specialty: {consultation.patientInfo?.specialty || 'General'}</Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))
+                ) : (
+                  <Grid item xs={12}>
+                    <Box textAlign="center" p={3}>
+                      <Typography color="text.secondary">
+                        No past consultations found
                       </Typography>
-                      <Typography>Status: {consultation.status}</Typography>
-                      <Typography>
-                        Created: {consultation.createdAt instanceof Date 
-                          ? consultation.createdAt.toLocaleString()
-                          : new Date(consultation.createdAt).toLocaleString()}
-                      </Typography>
-                      <Typography>Primary Symptom: {consultation.patientInfo?.primarySymptom || 'None'}</Typography>
-                      <Typography>Specialty: {consultation.patientInfo?.specialty || 'General'}</Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                    </Box>
+                  </Grid>
+                )}
+              </Grid>
+            )}
 
             {/* Consultation Details Dialog */}
             <Dialog 
