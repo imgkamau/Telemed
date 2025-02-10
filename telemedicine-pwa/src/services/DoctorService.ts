@@ -103,13 +103,14 @@ export class DoctorService {
             const querySnapshot = await getDocs(q);
             console.log('Found consultations:', querySnapshot.size);
             
-            const consultations = querySnapshot.docs.map(doc => {
+            const consultations = await Promise.all(querySnapshot.docs.map(async doc => {
                 const data = doc.data();
-                console.log('Processing consultation:', doc.id, data);
+                const patientData = await this.fetchPatientBioData(data.patientId);
                 
                 return {
                     id: doc.id,
                     patientId: data.patientId,
+                    patientName: patientData?.fullName || 'Unknown Patient',
                     doctorId: data.doctorId,
                     status: data.status || 'pending',
                     patientInfo: {
@@ -127,15 +128,11 @@ export class DoctorService {
                     doctorNotes: data.doctorNotes || '',
                     diagnosis: data.diagnosis || ''
                 } as Consultation;
-            });
+            }));
             
-            console.log('Processed consultations:', consultations);
             return consultations;
-            
         } catch (error) {
             console.error('Error fetching consultation history:', error);
-            const firebaseError = error as { message: string; code: string };
-            console.error('Error details:', firebaseError.message, firebaseError.code);
             return [];
         }
     }

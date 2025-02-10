@@ -23,6 +23,7 @@ export interface Assessment {
 export interface Consultation {
   id: string;
   patientId: string;
+  patientName: string;
   doctorId: string;
   status: 'pending' | 'active' | 'completed' | 'cancelled';
   createdAt: Date;
