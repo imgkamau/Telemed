@@ -39,25 +39,13 @@ service cloud.firestore {
         request.auth.uid == resource.data.doctorId;
     }
 
-        // Consultation rules
+    // Consultation rules
     match /consultations/{consultationId} {
       allow read: if request.auth != null && (
         resource == null ||  // Allow listing queries
         exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) ||  // Allow all doctors
         resource.data.patientId == request.auth.uid ||  // Allow patient
         resource.data.doctorId == request.auth.uid  // Allow assigned doctor
-      );
-      
-      allow write: if request.auth != null;
-    }
-
-    // Consultation rules
-    match /consultations/{consultationId} {
-      allow read: if request.auth != null && (
-        resource == null || // Allow reading non-existent documents
-        resource.data.patientId == request.auth.uid || 
-        resource.data.doctorId == request.auth.uid ||
-        exists(/databases/$(database)/documents/doctors/$(request.auth.uid))  // Allow all doctors to read consultations
       );
       
       allow create, update, delete: if request.auth != null;  // Keep existing permissive write rules
@@ -91,7 +79,10 @@ service cloud.firestore {
 
     // Patient profile rules
     match /patients/{patientId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (
+        request.auth.uid == patientId || 
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid))  // If user is a doctor
+      );
       allow create: if request.auth != null && 
         request.auth.uid == patientId;
       allow update: if request.auth != null && 
@@ -114,21 +105,6 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null && 
         request.auth.uid == resource.data.patientId;
-    }
-    
-    // Patient profile rules
-    match /patients/{patientId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == patientId || 
-        // Allow doctors to read patient data if they have consulted with the patient
-        exists(/databases/$(database)/documents/consultations/$(consultationId)) && 
-        get(/databases/$(database)/documents/consultations/$(consultationId)).data.doctorId == request.auth.uid && 
-        get(/databases/$(database)/documents/consultations/$(consultationId)).data.patientId == patientId
-      );
-      allow create: if request.auth != null && 
-        request.auth.uid == patientId;
-      allow update: if request.auth != null && 
-        request.auth.uid == patientId;
     }
   }
 }

@@ -93,54 +93,44 @@ export class DoctorService {
             
             console.log('Fetching consultation history for doctor:', doctorId);
             
-            // Simpler query without composite index requirements
             const consultationsRef = collection(this.db, 'consultations');
             const q = query(
                 consultationsRef,
-                where('doctorId', '==', doctorId)
-                // Remove orderBy temporarily
+                where('doctorId', '==', doctorId),
+                orderBy('createdAt', 'desc')
             );
             
             const querySnapshot = await getDocs(q);
             console.log('Found consultations:', querySnapshot.size);
-            console.log('Raw consultation data:', querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })));
             
-            if (querySnapshot.empty) {
-                console.log('No consultations found for doctor:', doctorId);
-                return [];
-            }
-
-            return querySnapshot.docs.map(doc => {
+            const consultations = querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                try {
-                    return {
-                        id: doc.id,
-                        patientId: data.patientId,
-                        doctorId: data.doctorId,
-                        status: data.status,
-                        patientInfo: {
-                            primarySymptom: data.patientInfo?.primarySymptom || '',
-                            age: data.patientInfo?.age,
-                            type: data.patientInfo?.type,
-                            additionalSymptoms: data.patientInfo?.additionalSymptoms || [],
-                            specialty: data.patientInfo?.specialty
-                        },
-                        createdAt: data.createdAt?.toDate() || new Date(),
-                        startTime: data.startTime?.toDate(),
-                        assessment: data.assessment || null,
-                        messages: data.messages || [],
-                        prescription: data.prescription || null,
-                        doctorNotes: data.doctorNotes || '',
-                        diagnosis: data.diagnosis || ''
-                    } as Consultation;
-                } catch (error) {
-                    console.error('Error processing consultation doc:', doc.id, error);
-                    return null;
-                }
-            }).filter(Boolean) as Consultation[];
+                console.log('Processing consultation:', doc.id, data);
+                
+                return {
+                    id: doc.id,
+                    patientId: data.patientId,
+                    doctorId: data.doctorId,
+                    status: data.status || 'pending',
+                    patientInfo: {
+                        primarySymptom: data.patientInfo?.primarySymptom || '',
+                        age: data.patientInfo?.age || '',
+                        type: data.patientInfo?.type || '',
+                        additionalSymptoms: data.patientInfo?.additionalSymptoms || [],
+                        specialty: data.patientInfo?.specialty || ''
+                    },
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                    startTime: data.startTime?.toDate() || null,
+                    assessment: data.assessment || null,
+                    messages: data.messages || [],
+                    prescription: data.prescription || null,
+                    doctorNotes: data.doctorNotes || '',
+                    diagnosis: data.diagnosis || ''
+                } as Consultation;
+            });
+            
+            console.log('Processed consultations:', consultations);
+            return consultations;
             
         } catch (error) {
             console.error('Error fetching consultation history:', error);
