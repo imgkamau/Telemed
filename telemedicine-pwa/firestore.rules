@@ -41,7 +41,14 @@ service cloud.firestore {
 
     // Consultation rules
     match /consultations/{consultationId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null && (
+        resource == null || // Allow reading non-existent documents
+        resource.data.patientId == request.auth.uid || 
+        resource.data.doctorId == request.auth.uid ||
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid))  // Allow all doctors to read consultations
+      );
+      
+      allow create, update, delete: if request.auth != null;  // Keep existing permissive write rules
     }
 
     // User profile rules
@@ -87,20 +94,6 @@ service cloud.firestore {
         request.auth.uid == userId;
     }
 
-        // Consultation rules
-    match /consultations/{consultationId} {
-      allow read: if request.auth != null && 
-        (resource.data.patientId == request.auth.uid || 
-         resource.data.doctorId == request.auth.uid);
-      
-      allow create: if request.auth != null && 
-        request.resource.data.patientId == request.auth.uid;
-      
-      allow update: if request.auth != null && 
-        (resource.data.patientId == request.auth.uid || 
-         resource.data.doctorId == request.auth.uid);
-    }
-
     // Pre-assessment rules
     match /preAssessments/{assessmentId} {
       allow read: if request.auth != null && 
@@ -111,7 +104,7 @@ service cloud.firestore {
         request.auth.uid == resource.data.patientId;
     }
     
-        // Patient profile rules
+    // Patient profile rules
     match /patients/{patientId} {
       allow read: if request.auth != null && (
         request.auth.uid == patientId || 

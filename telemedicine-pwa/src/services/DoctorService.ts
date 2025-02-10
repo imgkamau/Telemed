@@ -97,12 +97,19 @@ export class DoctorService {
             const q = query(
                 consultationsRef,
                 where('doctorId', '==', doctorId),
-                where('status', 'in', ['active', 'completed', 'pending']),
                 orderBy('createdAt', 'desc')
             );
             
             const querySnapshot = await getDocs(q);
-            console.log('Raw consultation data:', querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            console.log('Raw consultation data:', querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    doctorId: data.doctorId,
+                    status: data.status,
+                    createdAt: data.createdAt
+                };
+            }));
             
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
