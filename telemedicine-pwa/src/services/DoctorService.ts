@@ -107,19 +107,24 @@ export class DoctorService {
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
-                    ...data,
                     id: doc.id,
-                    createdAt: data.createdAt?.toDate() || new Date(),
                     patientId: data.patientId,
                     doctorId: data.doctorId,
                     status: data.status,
-                    patientInfo: data.patientInfo,
-                    startTime: data.startTime,
-                    assessment: data.assessment,
+                    patientInfo: {
+                        primarySymptom: data.patientInfo?.primarySymptom || '',
+                        age: data.patientInfo?.age,
+                        type: data.patientInfo?.type,
+                        additionalSymptoms: data.patientInfo?.additionalSymptoms || [],
+                        specialty: data.patientInfo?.specialty
+                    },
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                    startTime: data.startTime?.toDate(),
+                    assessment: data.assessment || null,
                     messages: data.messages || [],
-                    prescription: data.prescription,
-                    doctorNotes: data.doctorNotes,
-                    diagnosis: data.diagnosis
+                    prescription: data.prescription || null,
+                    doctorNotes: data.doctorNotes || '',
+                    diagnosis: data.diagnosis || ''
                 } as Consultation;
             });
         } catch (error) {
