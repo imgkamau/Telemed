@@ -82,6 +82,18 @@ interface Consultation {
   symptoms: string;
 }
 
+interface ConsultationDetailsProps {
+  consultation: {
+    id: string;
+    patientName: string;
+    createdAt: Date;
+    status: string;
+    doctorNotes?: string;
+    diagnosis?: string;
+    prescription?: string;
+  }
+}
+
 // Initialize services outside the component
 const webSocketService = new WebSocketService('wss://weblogger1029353476-api.coolzcloud.com/log');
 const doctorService = new DoctorService();
@@ -124,6 +136,49 @@ const PatientDetailsModal = ({ open, onClose, patient }: PatientDetailsModalProp
         </Grid>
       </DialogContent>
     </Dialog>
+  );
+};
+
+const ConsultationDetails = ({ consultation }: ConsultationDetailsProps) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Card onClick={() => setOpen(true)} sx={{ cursor: 'pointer' }}>
+        <CardContent>
+          <Typography variant="h6">
+            {consultation.patientName} - {new Date(consultation.createdAt).toLocaleDateString()}
+          </Typography>
+          <Typography color="textSecondary">
+            Status: {consultation.status}
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Consultation Details</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="h6">Doctor Notes</Typography>
+              <Typography>{consultation.doctorNotes || 'No notes recorded'}</Typography>
+            </Grid>
+            {consultation.diagnosis && (
+              <Grid item xs={12}>
+                <Typography variant="h6">Diagnosis</Typography>
+                <Typography>{consultation.diagnosis}</Typography>
+              </Grid>
+            )}
+            {consultation.prescription && (
+              <Grid item xs={12}>
+                <Typography variant="h6">Prescription</Typography>
+                <Typography>{consultation.prescription}</Typography>
+              </Grid>
+            )}
+          </Grid>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
@@ -356,7 +411,7 @@ export default function DoctorDashboard() {
             onChange={handleTabChange}
             sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
           >
-            <Tab label="UPCOMING CONSULTATIONS" />
+            <Tab label="HOME" />
             <Tab label="PAST CONSULTATIONS" />
             <Tab label="MY PATIENTS" />
           </Tabs>

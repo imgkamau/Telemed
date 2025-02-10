@@ -35,4 +35,11 @@ export interface Patient extends PatientBioData {
   // Add any additional fields that might be needed for the patient dashboard
   consultationHistory?: string[];
   prescriptionHistory?: string[];
+  medicalRecord?: {
+    weight?: string;
+    bloodPressure?: string;
+    bloodGroup?: string;
+    chronicIllnesses?: string[];
+    familyHistory?: string;
+  };
 } 

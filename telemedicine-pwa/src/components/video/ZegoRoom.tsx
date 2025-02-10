@@ -3,6 +3,7 @@ import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useRouter } from 'next/router';
+import { Typography, TextField, Button } from '@mui/material';
 
 interface ZegoRoomProps {
   roomId: string;
@@ -18,6 +19,7 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
   const zegoRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [notes, setNotes] = useState<string>('');
 
   const cleanupMediaDevices = () => {
     if (mediaStreamRef.current) {
@@ -166,6 +168,56 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
     }
   };
 
+  const NotesPanel = () => isDoctor && (
+    <div style={{
+      position: 'fixed',
+      right: '20px',
+      top: '80px',
+      width: '300px',
+      zIndex: 1000,
+      backgroundColor: 'white',
+      padding: '15px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    }}>
+      <Typography variant="h6">Consultation Notes</Typography>
+      <TextField
+        multiline
+        rows={4}
+        fullWidth
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Enter consultation notes..."
+        variant="outlined"
+        sx={{ mt: 1 }}
+      />
+      <Button 
+        variant="contained"
+        onClick={handleSaveNotes}
+        sx={{ mt: 1 }}
+      >
+        Save Notes
+      </Button>
+    </div>
+  );
+
+  const handleSaveNotes = async () => {
+    if (!db) {
+      console.error('Database not initialized');
+      return;
+    }
+    try {
+      const consultationRef = doc(db, 'consultations', roomId);
+      await updateDoc(consultationRef, {
+
+        doctorNotes: notes,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
+  };
+
   if (error) {
     return (
       <div style={{ padding: '20px', color: 'red' }}>
@@ -202,6 +254,7 @@ function ZegoRoom({ roomId, userId, userName, isDoctor }: ZegoRoomProps) {
         overflow: 'hidden'
       }}
     >
+      {isDoctor && <NotesPanel />}
       <button
         className="custom-leave-button"
         onClick={handleLeaveRoom}

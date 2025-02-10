@@ -217,39 +217,83 @@ export default function PatientDashboard() {
             <TabPanel value={tabValue} index={1}>
               <Grid container spacing={2}>
                 {consultations
-                  .filter(c => c.prescription)
+                  .filter(c => c.prescription || c.diagnosis)
                   .map((consultation) => (
                     <Grid item xs={12} key={consultation.id}>
                       <Card>
                         <CardContent>
                           <Typography variant="h6">
-                            Prescription - {new Date(consultation.createdAt).toLocaleDateString()}
+                            Consultation - {new Date(consultation.createdAt).toLocaleDateString()}
                           </Typography>
                           <Typography color="textSecondary" gutterBottom>
                             Dr. {consultation.doctorName || 'Unknown'}
                           </Typography>
-                          <Typography variant="body2" component="pre">
-                            {consultation.prescription}
-                          </Typography>
+                          {consultation.diagnosis && (
+                            <>
+                              <Typography variant="subtitle1" sx={{ mt: 2 }}>Diagnosis:</Typography>
+                              <Typography variant="body2" component="pre">
+                                {consultation.diagnosis}
+                              </Typography>
+                            </>
+                          )}
+                          {consultation.prescription && (
+                            <>
+                              <Typography variant="subtitle1" sx={{ mt: 2 }}>Prescribed Medication:</Typography>
+                              <Typography variant="body2" component="pre">
+                                {consultation.prescription}
+                              </Typography>
+                            </>
+                          )}
                         </CardContent>
                       </Card>
                     </Grid>
                   ))}
-                {!consultations.some(c => c.prescription) && (
-                  <Grid item xs={12}>
-                    <Typography color="textSecondary" align="center">
-                      No prescriptions yet
-                    </Typography>
-                  </Grid>
-                )}
               </Grid>
             </TabPanel>
 
             {/* Medical Records */}
             <TabPanel value={tabValue} index={2}>
-              <Typography variant="body1" color="textSecondary" align="center">
-                Medical records will be available after your first consultation
-              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>Vital Statistics</Typography>
+                      <List>
+                        <ListItem>
+                          <ListItemText primary="Weight" secondary={`${patientData.medicalRecord?.weight || 'N/A'} kg`} />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText primary="Blood Pressure" secondary={patientData.medicalRecord?.bloodPressure || 'N/A'} />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText primary="Blood Group" secondary={patientData.medicalRecord?.bloodGroup || 'N/A'} />
+                        </ListItem>
+                      </List>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>Medical History</Typography>
+                      <List>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Chronic Illnesses" 
+                            secondary={patientData.medicalRecord?.chronicIllnesses?.join(', ') || 'None reported'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Family Medical History" 
+                            secondary={patientData.medicalRecord?.familyHistory || 'None reported'} 
+                          />
+                        </ListItem>
+                      </List>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
             </TabPanel>
           </Paper>
         </Grid>
