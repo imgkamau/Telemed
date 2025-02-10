@@ -655,7 +655,11 @@ export default function DoctorDashboard() {
                         Patient: {consultation.patientId}
                       </Typography>
                       <Typography>Status: {consultation.status}</Typography>
-                      <Typography>Created: {consultation.createdAt.toLocaleString()}</Typography>
+                      <Typography>
+                        Created: {consultation.createdAt instanceof Date 
+                          ? consultation.createdAt.toLocaleString()
+                          : new Date(consultation.createdAt).toLocaleString()}
+                      </Typography>
                       <Typography>Primary Symptom: {consultation.patientInfo?.primarySymptom || 'None'}</Typography>
                       <Typography>Specialty: {consultation.patientInfo?.specialty || 'General'}</Typography>
                     </CardContent>

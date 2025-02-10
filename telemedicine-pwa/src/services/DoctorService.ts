@@ -107,12 +107,13 @@ export class DoctorService {
             return querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
+                    ...data,
                     id: doc.id,
+                    createdAt: data.createdAt?.toDate() || new Date(),
                     patientId: data.patientId,
                     doctorId: data.doctorId,
                     status: data.status,
                     patientInfo: data.patientInfo,
-                    createdAt: data.createdAt,
                     startTime: data.startTime,
                     assessment: data.assessment,
                     messages: data.messages || [],
