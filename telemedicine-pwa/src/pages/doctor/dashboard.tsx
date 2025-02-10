@@ -78,8 +78,25 @@ interface Consultation {
   patientId: string;
   patientName: string;
   status: string;
-  scheduledTime: string;
-  symptoms: string;
+  createdAt: Date;
+  patientInfo: {
+    age?: number;
+    type?: string;
+    additionalSymptoms?: string[];
+    primarySymptom: string;
+    specialty?: string;
+  };
+  doctorNotes?: string;
+  diagnosis?: string;
+  prescription?: {
+    medications: {
+      name: string;
+      dosage: string;
+      frequency: string;
+      duration: string;
+    }[];
+    instructions: string;
+  };
 }
 
 interface ConsultationDetailsProps {
@@ -88,9 +105,24 @@ interface ConsultationDetailsProps {
     patientName: string;
     createdAt: Date;
     status: string;
+    patientInfo?: {
+      age?: number;
+      type?: string;
+      additionalSymptoms?: string[];
+      primarySymptom?: string;
+      specialty?: string;
+    };
     doctorNotes?: string;
     diagnosis?: string;
-    prescription?: string;
+    prescription?: {
+      medications: {
+        name: string;
+        dosage: string;
+        frequency: string;
+        duration: string;
+      }[];
+      instructions: string;
+    };
   }
 }
 
@@ -160,21 +192,36 @@ const ConsultationDetails = ({ consultation }: ConsultationDetailsProps) => {
         <DialogContent>
           <Grid container spacing={2}>
             <Grid item xs={12}>
+              <Typography variant="h6">Patient Information</Typography>
+              <Typography>Age: {consultation.patientInfo?.age || 'Not specified'}</Typography>
+              <Typography>Type: {consultation.patientInfo?.type || 'Self'}</Typography>
+              <Typography>Additional Symptoms: {consultation.patientInfo?.additionalSymptoms?.join(', ') || 'None'}</Typography>
+            </Grid>
+            <Grid item xs={12}>
               <Typography variant="h6">Doctor Notes</Typography>
               <Typography>{consultation.doctorNotes || 'No notes recorded'}</Typography>
             </Grid>
-            {consultation.diagnosis && (
-              <Grid item xs={12}>
-                <Typography variant="h6">Diagnosis</Typography>
-                <Typography>{consultation.diagnosis}</Typography>
-              </Grid>
-            )}
-            {consultation.prescription && (
-              <Grid item xs={12}>
-                <Typography variant="h6">Prescription</Typography>
-                <Typography>{consultation.prescription}</Typography>
-              </Grid>
-            )}
+            <Grid item xs={12}>
+              <Typography variant="h6">Diagnosis</Typography>
+              <Typography>{consultation.diagnosis || 'No diagnosis recorded'}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="h6">Prescription</Typography>
+              {consultation.prescription ? (
+                <>
+                  <Typography variant="subtitle1">Medications:</Typography>
+                  {consultation.prescription.medications.map((med, index) => (
+                    <Typography key={index}>
+                      • {med.name} - {med.dosage} ({med.frequency} for {med.duration})
+                    </Typography>
+                  ))}
+                  <Typography variant="subtitle1" sx={{ mt: 1 }}>Instructions:</Typography>
+                  <Typography>{consultation.prescription.instructions}</Typography>
+                </>
+              ) : (
+                <Typography>No prescription given</Typography>
+              )}
+            </Grid>
           </Grid>
         </DialogContent>
       </Dialog>
@@ -203,6 +250,8 @@ export default function DoctorDashboard() {
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [pendingConsultationsWithPatients, setPendingConsultationsWithPatients] = useState<(PendingConsultation & { patientName: string })[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -378,6 +427,11 @@ export default function DoctorDashboard() {
   const handlePatientClick = (patient: any) => {
     setSelectedPatient(patient);
     setIsModalOpen(true);
+  };
+
+  const handleConsultationClick = (consultation: Consultation) => {
+    setSelectedConsultation(consultation);
+    setIsDialogOpen(true);
   };
 
   if (loading) {
@@ -586,9 +640,76 @@ export default function DoctorDashboard() {
 
           {/* Second Tab: Past Consultations */}
           <TabPanel value={tabValue} index={1}>
-            <Paper sx={{ p: 3 }}>
-              <ConsultationHistory consultations={consultationHistory} isDoctor={true} />
-            </Paper>
+            <Grid container spacing={2}>
+              {consultations.map((consultation) => (
+                <Grid item xs={12} key={consultation.id}>
+                  <Card 
+                    onClick={() => handleConsultationClick(consultation)}
+                    sx={{ 
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: '#f5f5f5' }
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="h6">
+                        Patient: {consultation.patientId}
+                      </Typography>
+                      <Typography>Status: {consultation.status}</Typography>
+                      <Typography>Created: {consultation.createdAt.toLocaleString()}</Typography>
+                      <Typography>Primary Symptom: {consultation.patientInfo?.primarySymptom || 'None'}</Typography>
+                      <Typography>Specialty: {consultation.patientInfo?.specialty || 'General'}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+
+            {/* Consultation Details Dialog */}
+            <Dialog 
+              open={isDialogOpen} 
+              onClose={() => setIsDialogOpen(false)}
+              maxWidth="md"
+              fullWidth
+            >
+              <DialogTitle>Consultation Details</DialogTitle>
+              <DialogContent>
+                {selectedConsultation && (
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Typography variant="h6">Patient Information</Typography>
+                      <Typography>Age: {selectedConsultation.patientInfo?.age || 'Not specified'}</Typography>
+                      <Typography>Type: {selectedConsultation.patientInfo?.type || 'Self'}</Typography>
+                      <Typography>Additional Symptoms: {selectedConsultation.patientInfo?.additionalSymptoms?.join(', ') || 'None'}</Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="h6">Doctor Notes</Typography>
+                      <Typography>{selectedConsultation.doctorNotes || 'No notes recorded'}</Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="h6">Diagnosis</Typography>
+                      <Typography>{selectedConsultation.diagnosis || 'No diagnosis recorded'}</Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="h6">Prescription</Typography>
+                      {selectedConsultation.prescription ? (
+                        <>
+                          <Typography variant="subtitle1">Medications:</Typography>
+                          {selectedConsultation.prescription.medications.map((med, index) => (
+                            <Typography key={index}>
+                              • {med.name} - {med.dosage} ({med.frequency} for {med.duration})
+                            </Typography>
+                          ))}
+                          <Typography variant="subtitle1" sx={{ mt: 1 }}>Instructions:</Typography>
+                          <Typography>{selectedConsultation.prescription.instructions}</Typography>
+                        </>
+                      ) : (
+                        <Typography>No prescription given</Typography>
+                      )}
+                    </Grid>
+                  </Grid>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabPanel>
 
           {/* Third Tab: My Patients */}

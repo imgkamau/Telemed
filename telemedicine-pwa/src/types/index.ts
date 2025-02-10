@@ -38,6 +38,9 @@ export interface Consultation {
   messages: Message[];
   prescription: Prescription | null;
   estimatedWaitTime?: string;
+  primarySymptom: string;
+  doctorNotes?: string;
+  diagnosis?: string;
 }
 
 export interface Prescription {

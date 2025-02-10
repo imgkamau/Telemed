@@ -112,13 +112,13 @@ export class DoctorService {
                     doctorId: data.doctorId,
                     status: data.status,
                     patientInfo: data.patientInfo,
-                    createdAt: data.createdAt?.toDate(),
-                    startTime: data.startTime?.toDate(),
-                    completedAt: data.completedAt?.toDate(),
-                    endTime: data.endTime?.toDate(),
-                    prescription: data.prescription,
+                    createdAt: data.createdAt,
+                    startTime: data.startTime,
                     assessment: data.assessment,
-                    messages: data.messages || []
+                    messages: data.messages || [],
+                    prescription: data.prescription,
+                    doctorNotes: data.doctorNotes,
+                    diagnosis: data.diagnosis
                 } as Consultation;
             });
         } catch (error) {
